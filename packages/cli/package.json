@@ -2,10 +2,10 @@
   "name": "@model-planes/cli",
   "version": "0.0.0",
   "private": true,
-  "type": "module",
   "bin": {
     "model-planes": "./src/index.ts"
   },
+  "type": "module",
   "scripts": {
     "build": "tsc --noEmit",
     "check-types": "tsc --noEmit",

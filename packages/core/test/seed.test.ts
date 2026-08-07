@@ -38,7 +38,9 @@ describe("reproducible seed derivation (US3, FR-010)", () => {
   });
 
   it("derives an identical sub-seed across processes", () => {
-    const scriptPath = fileURLToPath(new URL("./fixtures/derive-seed-subprocess.mts", import.meta.url));
+    const scriptPath = fileURLToPath(
+      new URL("./fixtures/derive-seed-subprocess.mts", import.meta.url),
+    );
     const output = execFileSync(process.execPath, [scriptPath], { encoding: "utf8" });
     const fromSubprocess = JSON.parse(output) as Seed;
     const inProcess = deriveSubSeed(seed, "wind");

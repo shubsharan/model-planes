@@ -88,7 +88,9 @@ function describe(value: unknown): string {
 
 export function requireInteger(field: string, value: unknown): Result<number> {
   if (!isInteger(value)) {
-    return err(schemaError(field, "not-integer", `${field} must be an integer, got ${describe(value)}`));
+    return err(
+      schemaError(field, "not-integer", `${field} must be an integer, got ${describe(value)}`),
+    );
   }
   return ok(value);
 }

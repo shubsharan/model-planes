@@ -22,9 +22,9 @@ description: "Task list for feature: Core Contracts"
 
 **Purpose**: Wire the test harness and package scripts before any contract code.
 
-- [X] T001 Add Vitest as a workspace dev dependency and create the shared root config `vitest.config.ts` (transforms TS/ESM directly against `src`) per [plan.md](plan.md) Testing section
-- [X] T002 [P] Set the `test` script to `vitest run` in `packages/core/package.json` and confirm `packages/core/tsconfig.json` extends the base config with `strict` and `noUncheckedIndexedAccess`
-- [X] T003 [P] Confirm oxlint/oxfmt configuration covers `packages/core/src` and `packages/core/test`
+- [x] T001 Add Vitest as a workspace dev dependency and create the shared root config `vitest.config.ts` (transforms TS/ESM directly against `src`) per [plan.md](plan.md) Testing section
+- [x] T002 [P] Set the `test` script to `vitest run` in `packages/core/package.json` and confirm `packages/core/tsconfig.json` extends the base config with `strict` and `noUncheckedIndexedAccess`
+- [x] T003 [P] Confirm oxlint/oxfmt configuration covers `packages/core/src` and `packages/core/test`
 
 ---
 
@@ -34,10 +34,10 @@ description: "Task list for feature: Core Contracts"
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [X] T004 Governing gate — confirm [ADR 0001](../../adrs/0001-deterministic-state-representation.md) is **Accepted** (not Proposed) before implementation proceeds; the feature cannot move from Pending to Active while the ADR is unaccepted (per [plan.md](plan.md) Architecture Decisions)
-- [X] T005 Define `SCHEMA_VERSION`, the `SchemaError` type, and reusable validation-boundary guards (integer-only, range, unique-id) in `packages/core/src/validate.ts` (FR-011)
-- [X] T006 [P] Define base-unit branded integer types (mm, millidegree, mm/s, tick) in `packages/core/src/units.ts` — type-level only; exact conversions are deferred to US3 (FR-009)
-- [X] T007 Create the public barrel `packages/core/src/index.ts` re-exporting the surface described in [contracts/public-api.md](contracts/public-api.md); each user story appends its exports here
+- [x] T004 Governing gate — confirm [ADR 0001](../../adrs/0001-deterministic-state-representation.md) is **Accepted** (not Proposed) before implementation proceeds; the feature cannot move from Pending to Active while the ADR is unaccepted (per [plan.md](plan.md) Architecture Decisions)
+- [x] T005 Define `SCHEMA_VERSION`, the `SchemaError` type, and reusable validation-boundary guards (integer-only, range, unique-id) in `packages/core/src/validate.ts` (FR-011)
+- [x] T006 [P] Define base-unit branded integer types (mm, millidegree, mm/s, tick) in `packages/core/src/units.ts` — type-level only; exact conversions are deferred to US3 (FR-009)
+- [x] T007 Create the public barrel `packages/core/src/index.ts` re-exporting the surface described in [contracts/public-api.md](contracts/public-api.md); each user story appends its exports here
 
 **Checkpoint**: Test harness green (empty), ADR accepted, shared primitives available — user stories can begin.
 
@@ -53,18 +53,18 @@ description: "Task list for feature: Core Contracts"
 
 > **NOTE: Write these FIRST and observe them FAIL before implementing.**
 
-- [X] T008 [P] [US1] Failing Vitest spec `packages/core/test/vocabulary.test.ts`: build a `WorldSnapshot`, emit one of every `CommandKind`, assert each command exposes only vocabulary params (no coordinate/motion override) and carries `observedAt` + `effectiveAt` (spec US1 Independent Test; FR-002, FR-003, FR-004)
-- [X] T009 [P] [US1] Failing Vitest spec `packages/core/test/state-validate.test.ts`: malformed/incomplete `AircraftState`, `RunwayState`, and `Command` values are rejected rather than defaulted (FR-011, SC-006 for these entities)
+- [x] T008 [P] [US1] Failing Vitest spec `packages/core/test/vocabulary.test.ts`: build a `WorldSnapshot`, emit one of every `CommandKind`, assert each command exposes only vocabulary params (no coordinate/motion override) and carries `observedAt` + `effectiveAt` (spec US1 Independent Test; FR-002, FR-003, FR-004)
+- [x] T009 [P] [US1] Failing Vitest spec `packages/core/test/state-validate.test.ts`: malformed/incomplete `AircraftState`, `RunwayState`, and `Command` values are rejected rather than defaulted (FR-011, SC-006 for these entities)
 
 ### Implementation for User Story 1
 
-- [X] T010 [P] [US1] Implement `Vec3`/`Position`, `AircraftPerformanceLimits`, and the `AircraftClass` enum with validation in `packages/core/src/state.ts` (FR-001)
-- [X] T011 [US1] Implement `AircraftState` (id, position, heading, speed, class, limits, separationRequirement, fuelOrWindowRemaining — **no `mode` field**) with validation in `packages/core/src/state.ts` (FR-001; lifecycle/clearance are derived downstream per [data-model.md](data-model.md))
-- [X] T012 [US1] Implement `RunwayState` (id, `threshold1`/`threshold2`, `width`, `closed` — occupancy is **not** stored, it is derived) with validation (`threshold1 ≠ threshold2`, `width > 0`, endpoints in bounds) in `packages/core/src/state.ts` (FR-001)
-- [X] T013 [US1] Implement `WorldSnapshot` (simTime ≥ 0, schemaVersion, unique aircraft/runway ids) in `packages/core/src/state.ts` (FR-001)
-- [X] T014 [US1] Implement the `CommandKind` vocabulary and `Command` (kind, target, kind-specific `params`, `observedAt`, `effectiveAt`) with constructors, `params`-match-`kind` validation, and the no-coordinate invariant in `packages/core/src/command.ts` (FR-002, FR-003, FR-004)
-- [X] T015 [US1] Re-export US1 types from `packages/core/src/index.ts`
-- [X] T016 [US1] Run T008 and T009; confirm both now pass
+- [x] T010 [P] [US1] Implement `Vec3`/`Position`, `AircraftPerformanceLimits`, and the `AircraftClass` enum with validation in `packages/core/src/state.ts` (FR-001)
+- [x] T011 [US1] Implement `AircraftState` (id, position, heading, speed, class, limits, separationRequirement, fuelOrWindowRemaining — **no `mode` field**) with validation in `packages/core/src/state.ts` (FR-001; lifecycle/clearance are derived downstream per [data-model.md](data-model.md))
+- [x] T012 [US1] Implement `RunwayState` (id, `threshold1`/`threshold2`, `width`, `closed` — occupancy is **not** stored, it is derived) with validation (`threshold1 ≠ threshold2`, `width > 0`, endpoints in bounds) in `packages/core/src/state.ts` (FR-001)
+- [x] T013 [US1] Implement `WorldSnapshot` (simTime ≥ 0, schemaVersion, unique aircraft/runway ids) in `packages/core/src/state.ts` (FR-001)
+- [x] T014 [US1] Implement the `CommandKind` vocabulary and `Command` (kind, target, kind-specific `params`, `observedAt`, `effectiveAt`) with constructors, `params`-match-`kind` validation, and the no-coordinate invariant in `packages/core/src/command.ts` (FR-002, FR-003, FR-004)
+- [x] T015 [US1] Re-export US1 types from `packages/core/src/index.ts`
+- [x] T016 [US1] Run T008 and T009; confirm both now pass
 
 **Checkpoint**: A consumer can build a snapshot and emit every command type — MVP is functional and independently testable.
 
@@ -80,17 +80,17 @@ description: "Task list for feature: Core Contracts"
 
 > **NOTE: Write these FIRST and observe them FAIL before implementing.**
 
-- [X] T017 [P] [US2] Failing Vitest spec `packages/core/test/serialize.test.ts`: serialize→deserialize round-trip equality, byte-identical output across repeated serializations, and version-mismatch rejection on read (SC-002, SC-004; FR-007, FR-008)
-- [X] T018 [P] [US2] Failing Vitest spec `packages/core/test/attribution.test.ts`: on a record where an intervention modified a proposal, `proposed`, `intervention`, and `applied` are all preserved and independently retrievable (SC-003; FR-006)
+- [x] T017 [P] [US2] Failing Vitest spec `packages/core/test/serialize.test.ts`: serialize→deserialize round-trip equality, byte-identical output across repeated serializations, and version-mismatch rejection on read (SC-002, SC-004; FR-007, FR-008)
+- [x] T018 [P] [US2] Failing Vitest spec `packages/core/test/attribution.test.ts`: on a record where an intervention modified a proposal, `proposed`, `intervention`, and `applied` are all preserved and independently retrievable (SC-003; FR-006)
 
 ### Implementation for User Story 2
 
-- [X] T019 [P] [US2] Implement `Intervention` (enumerated reason + optional detail) in `packages/core/src/trace.ts` (FR-005, FR-006)
-- [X] T020 [US2] Implement `DecisionRecord` (observed, messages, proposed, intervention, applied, result, margins, meta) keeping proposal/intervention/applied distinct in `packages/core/src/trace.ts` (FR-005, FR-006)
-- [X] T021 [US2] Implement `Trace` (schemaVersion, seed, records ordered by simTime/index) and the `SCHEMA_VERSION` wiring in `packages/core/src/trace.ts` (FR-005, FR-007)
-- [X] T022 [US2] Implement canonical deterministic serialize/deserialize (integers only, fixed field order / sorted keys, explicit `schemaVersion`, reject-on-version-mismatch when reading) in `packages/core/src/serialize.ts` (FR-007, FR-008)
-- [X] T023 [US2] Re-export US2 types and serialization surface from `packages/core/src/index.ts`
-- [X] T024 [US2] Run T017 and T018; confirm both now pass
+- [x] T019 [P] [US2] Implement `Intervention` (enumerated reason + optional detail) in `packages/core/src/trace.ts` (FR-005, FR-006)
+- [x] T020 [US2] Implement `DecisionRecord` (observed, messages, proposed, intervention, applied, result, margins, meta) keeping proposal/intervention/applied distinct in `packages/core/src/trace.ts` (FR-005, FR-006)
+- [x] T021 [US2] Implement `Trace` (schemaVersion, seed, records ordered by simTime/index) and the `SCHEMA_VERSION` wiring in `packages/core/src/trace.ts` (FR-005, FR-007)
+- [x] T022 [US2] Implement canonical deterministic serialize/deserialize (integers only, fixed field order / sorted keys, explicit `schemaVersion`, reject-on-version-mismatch when reading) in `packages/core/src/serialize.ts` (FR-007, FR-008)
+- [x] T023 [US2] Re-export US2 types and serialization surface from `packages/core/src/index.ts`
+- [x] T024 [US2] Run T017 and T018; confirm both now pass
 
 **Checkpoint**: Records round-trip deterministically and keep attribution separable — US1 + US2 both work independently.
 
@@ -106,15 +106,15 @@ description: "Task list for feature: Core Contracts"
 
 > **NOTE: Write these FIRST and observe them FAIL before implementing.**
 
-- [X] T025 [P] [US3] Failing Vitest spec `packages/core/test/seed.test.ts`: `deriveSubSeed(label | index)` yields identical sub-seeds on repeated calls and across processes (SC-005; FR-010)
-- [X] T026 [P] [US3] Failing Vitest spec `packages/core/test/units.test.ts`: exact conversion from an alternate boundary unit, and rejection of a quantity with a missing/ambiguous unit (SC-006; FR-009)
+- [x] T025 [P] [US3] Failing Vitest spec `packages/core/test/seed.test.ts`: `deriveSubSeed(label | index)` yields identical sub-seeds on repeated calls and across processes (SC-005; FR-010)
+- [x] T026 [P] [US3] Failing Vitest spec `packages/core/test/units.test.ts`: exact conversion from an alternate boundary unit, and rejection of a quantity with a missing/ambiguous unit (SC-006; FR-009)
 
 ### Implementation for User Story 3
 
-- [X] T027 [P] [US3] Implement exact boundary-unit conversions and missing/ambiguous-unit rejection in `packages/core/src/units.ts` (FR-009)
-- [X] T028 [P] [US3] Implement `Seed` (root) and the pure, deterministic `deriveSubSeed(label | index)` in `packages/core/src/seed.ts` (FR-010)
-- [X] T029 [US3] Re-export US3 surface (units + seeds) from `packages/core/src/index.ts`
-- [X] T030 [US3] Run T025 and T026; confirm both now pass
+- [x] T027 [P] [US3] Implement exact boundary-unit conversions and missing/ambiguous-unit rejection in `packages/core/src/units.ts` (FR-009)
+- [x] T028 [P] [US3] Implement `Seed` (root) and the pure, deterministic `deriveSubSeed(label | index)` in `packages/core/src/seed.ts` (FR-010)
+- [x] T029 [US3] Re-export US3 surface (units + seeds) from `packages/core/src/index.ts`
+- [x] T030 [US3] Run T025 and T026; confirm both now pass
 
 **Checkpoint**: All three stories independently functional.
 
@@ -124,11 +124,11 @@ description: "Task list for feature: Core Contracts"
 
 **Purpose**: Cross-story determinism coverage and the governing verification gates from [plan.md](plan.md).
 
-- [X] T031 [P] Add `packages/core/test/serialize-crossproc.test.ts`: serialize the same value in a separate Node process and assert byte-identical output (SC-002 across processes)
-- [X] T032 Add consolidated `packages/core/test/validate.test.ts` covering malformed-input rejection across all entities (FR-011, SC-006)
-- [X] T033 Verification gate — run `pnpm --filter @model-planes/core build && pnpm --filter @model-planes/core test` (provider-free); all Vitest specs pass
-- [X] T034 Verification gate — run `pnpm speckit:check` (workflow + link validation) and confirm spec and plan reference the same ADR
-- [X] T035 Execute [quickstart.md](quickstart.md) end-to-end as a smoke check
+- [x] T031 [P] Add `packages/core/test/serialize-crossproc.test.ts`: serialize the same value in a separate Node process and assert byte-identical output (SC-002 across processes)
+- [x] T032 Add consolidated `packages/core/test/validate.test.ts` covering malformed-input rejection across all entities (FR-011, SC-006)
+- [x] T033 Verification gate — run `pnpm --filter @model-planes/core build && pnpm --filter @model-planes/core test` (provider-free); all Vitest specs pass
+- [x] T034 Verification gate — run `pnpm speckit:check` (workflow + link validation) and confirm spec and plan reference the same ADR
+- [x] T035 Execute [quickstart.md](quickstart.md) end-to-end as a smoke check
 
 > **No documentation task**: [plan.md](plan.md) declares **Documentation Impact: None** (the durable decision lives in ADR 0001; `docs/architecture.md` is unchanged).
 
@@ -138,15 +138,15 @@ description: "Task list for feature: Core Contracts"
 
 **Purpose**: Close the review findings on [PR #1](https://github.com/shubsharan/model-planes/pull/1). Six of the seven were symptoms of one gap — `core` had no single definition of a valid value at a boundary, so each parser and the serializer re-derived it and disagreed. The remedy is a shared boundary vocabulary in `validate.ts` that every entity derives from, not per-site guards.
 
-- [X] T036 Add the shared boundary vocabulary to `packages/core/src/validate.ts`: `unknown-field` reason, `requireRecord` (record gate + exact-key check), `requireDeclaredConstant`, and `-0` exclusion in `isInteger` (FR-011, ADR 0001)
-- [X] T037 Replace every ad-hoc `isRecord` gate in `state.ts`/`command.ts`/`trace.ts` with `requireRecord`, so an unknown field is an explicit error at every entity rather than silently dropped — including a coordinate or motion override on a `Command` (spec Edge Cases, FR-004, FR-011)
-- [X] T038 Stamp `schemaVersion` on `DecisionRecord` and route all four version checks (`WorldSnapshot`, `DecisionRecord`, `Trace`, `deserialize`) through `requireDeclaredConstant`, which also rejects a non-integer version (FR-007, SC-004)
-- [X] T039 Require `Trace.msPerTick` to equal `MS_PER_TICK` rather than merely be positive — a differing resolution silently reinterprets every recorded timestamp (ADR 0001)
-- [X] T040 Define the canonical serializable value domain once in `serialize.ts` (`requireCanonicalValue`/`requireCanonicalRecord`, backed by the encoder itself) and validate `messages`/`margins`/`meta` against it, so a record that parses is guaranteed to serialize (FR-008, FR-012)
-- [X] T041 Rewrite unit conversion on exact integer arithmetic over the input's decimal mantissa, removing the binary floating-point residue that rejected exactly-representable quantities; add `quantizeToBaseUnit` implementing ADR 0001's round-half-to-even boundary rounding (FR-009)
-- [X] T042 Extend the Vitest suites to cover every finding, including the `1.001 m` regression and the parse-implies-serialize guarantee
-- [X] T043 Reconcile the governing artifacts with the code: `DecisionRecord.schemaVersion` in `trace-schema.md`/`data-model.md`, the `unknown-field` reason and `quantizeToBaseUnit` in `public-api.md`, the R4 clarification in `research.md`, FR-009's quantization clause, and the stale ADR "(Proposed)" labels in `spec.md`/`plan.md` (AGENTS.md)
-- [X] T044 Verification gate — run the full Vitest suite; all specs pass
+- [x] T036 Add the shared boundary vocabulary to `packages/core/src/validate.ts`: `unknown-field` reason, `requireRecord` (record gate + exact-key check), `requireDeclaredConstant`, and `-0` exclusion in `isInteger` (FR-011, ADR 0001)
+- [x] T037 Replace every ad-hoc `isRecord` gate in `state.ts`/`command.ts`/`trace.ts` with `requireRecord`, so an unknown field is an explicit error at every entity rather than silently dropped — including a coordinate or motion override on a `Command` (spec Edge Cases, FR-004, FR-011)
+- [x] T038 Stamp `schemaVersion` on `DecisionRecord` and route all four version checks (`WorldSnapshot`, `DecisionRecord`, `Trace`, `deserialize`) through `requireDeclaredConstant`, which also rejects a non-integer version (FR-007, SC-004)
+- [x] T039 Require `Trace.msPerTick` to equal `MS_PER_TICK` rather than merely be positive — a differing resolution silently reinterprets every recorded timestamp (ADR 0001)
+- [x] T040 Define the canonical serializable value domain once in `serialize.ts` (`requireCanonicalValue`/`requireCanonicalRecord`, backed by the encoder itself) and validate `messages`/`margins`/`meta` against it, so a record that parses is guaranteed to serialize (FR-008, FR-012)
+- [x] T041 Rewrite unit conversion on exact integer arithmetic over the input's decimal mantissa, removing the binary floating-point residue that rejected exactly-representable quantities; add `quantizeToBaseUnit` implementing ADR 0001's round-half-to-even boundary rounding (FR-009)
+- [x] T042 Extend the Vitest suites to cover every finding, including the `1.001 m` regression and the parse-implies-serialize guarantee
+- [x] T043 Reconcile the governing artifacts with the code: `DecisionRecord.schemaVersion` in `trace-schema.md`/`data-model.md`, the `unknown-field` reason and `quantizeToBaseUnit` in `public-api.md`, the R4 clarification in `research.md`, FR-009's quantization clause, and the stale ADR "(Proposed)" labels in `spec.md`/`plan.md` (AGENTS.md)
+- [x] T044 Verification gate — run the full Vitest suite; all specs pass
 
 ---
 

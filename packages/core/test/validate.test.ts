@@ -16,7 +16,11 @@ import {
   parseWorldSnapshot,
   serialize,
 } from "../src/index.ts";
-import { buildSampleRecord, buildSampleSnapshot, buildSampleTrace } from "./fixtures/sample-trace.ts";
+import {
+  buildSampleRecord,
+  buildSampleSnapshot,
+  buildSampleTrace,
+} from "./fixtures/sample-trace.ts";
 
 describe("consolidated malformed-input rejection (FR-011, SC-006)", () => {
   it("rejects AircraftPerformanceLimits where minSpeed exceeds maxSpeed", () => {
@@ -93,10 +97,13 @@ describe("consolidated malformed-input rejection (FR-011, SC-006)", () => {
   // msPerTick is fixed by the schema, not chosen per trace: a trace declaring
   // 200 would silently reinterpret every recorded timestamp against a 100ms
   // tick. ADR 0001 makes a change to the base unit a schema-version change.
-  it.each([[0], [200], [1]])("rejects a Trace whose msPerTick is %p rather than the declared MS_PER_TICK", (ms) => {
-    const result = parseTrace({ ...buildSampleTrace(), msPerTick: ms });
-    expect(result.ok).toBe(false);
-  });
+  it.each([[0], [200], [1]])(
+    "rejects a Trace whose msPerTick is %p rather than the declared MS_PER_TICK",
+    (ms) => {
+      const result = parseTrace({ ...buildSampleTrace(), msPerTick: ms });
+      expect(result.ok).toBe(false);
+    },
+  );
 
   it("accepts a Trace whose msPerTick matches the declared resolution", () => {
     const result = parseTrace({ ...buildSampleTrace(), msPerTick: MS_PER_TICK });

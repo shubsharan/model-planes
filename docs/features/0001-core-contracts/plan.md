@@ -44,7 +44,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
   (FR-002, FR-004). `core` defines the command vocabulary; `sim` owns transitions and
   derives lifecycle phase/clearance (not stored on observed state).
 - **III — Noncompensatory Safety**: N/A to this feature — no scoring/aggregation here.
-  The record schema *carries* separate `margins`/scoring-event fields so downstream
+  The record schema _carries_ separate `margins`/scoring-event fields so downstream
   safety reporting can stay noncompensatory; it does not compute or combine them.
 - **IV — Model-vs-System Attribution**: PASS. `proposed`, `intervention`, and `applied`
   are distinct, independently retrievable fields on every record (FR-006, SC-003).

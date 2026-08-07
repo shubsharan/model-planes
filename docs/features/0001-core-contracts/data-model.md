@@ -2,18 +2,18 @@
 
 Entities the `core` package defines. Fields use the canonical fixed-point base units
 from [ADR 0001](../../adrs/0001-deterministic-state-representation.md). These are shared
-*shapes and invariants* only — no dynamics, scoring, or generation logic (FR-012).
+_shapes and invariants_ only — no dynamics, scoring, or generation logic (FR-012).
 
 ## Canonical units (base units)
 
-| Quantity | Base unit | Notes |
-| --- | --- | --- |
-| Distance / position | millimetre (mm) | integer; airspace radius ~10⁸ mm |
-| Altitude | millimetre (mm) | integer, ≥ 0 |
-| Heading / angle | millidegree (m°) | integer in `[0, 360000)`, wraps |
-| Speed | mm per second (mm/s) | integer, ≥ 0 |
-| Time | tick | integer; `msPerTick` declared once per schema |
-| Fuel / time window | base unit (declared) | integer, ≥ 0 |
+| Quantity            | Base unit            | Notes                                         |
+| ------------------- | -------------------- | --------------------------------------------- |
+| Distance / position | millimetre (mm)      | integer; airspace radius ~10⁸ mm              |
+| Altitude            | millimetre (mm)      | integer, ≥ 0                                  |
+| Heading / angle     | millidegree (m°)     | integer in `[0, 360000)`, wraps               |
+| Speed               | mm per second (mm/s) | integer, ≥ 0                                  |
+| Time                | tick                 | integer; `msPerTick` declared once per schema |
+| Fuel / time window  | base unit (declared) | integer, ≥ 0                                  |
 
 Conversions from an alternate boundary unit are exact; a quantity with a missing or
 ambiguous unit is rejected (FR-009, SC-006).
@@ -55,13 +55,13 @@ ambiguous unit is rejected (FR-009, SC-006).
 
 - `id`: stable runway identifier.
 - `threshold1`, `threshold2`: Position (mm) — the two runway end thresholds. Length and
-  orientation are *derived* from these, not stored.
+  orientation are _derived_ from these, not stored.
 - `width`: distance (mm), > 0.
 - `closed`: boolean — the runway is out of service. This is an exogenous
   scenario/environment fact: not agent-set, and not derivable from aircraft positions,
   so it is the one irreducible piece of runway state that must be carried here.
 - Validation: `threshold1 ≠ threshold2`; both endpoints within airspace bounds;
-  `width > 0`; integers only. Occupancy is *not* stored — `sim` derives it (and
+  `width > 0`; integers only. Occupancy is _not_ stored — `sim` derives it (and
   multi-landing legality under separation + time gap) from aircraft positions relative
   to this geometry.
 
@@ -85,7 +85,7 @@ ambiguous unit is rejected (FR-009, SC-006).
 - `effectiveAt`: tick — when it applies (FR-003).
 - Validation: `params` match `kind`; values within their unit ranges; the vocabulary is
   the only channel of intent — no field can set coordinates directly (FR-004).
-- Note: `effectiveAt < observedAt` is *representable and detectable*; whether it is
+- Note: `effectiveAt < observedAt` is _representable and detectable_; whether it is
   legal is the simulator's decision, not this contract's (see Edge Cases in the spec).
 
 ### Intervention
@@ -145,16 +145,16 @@ and the legal rules that govern them are owned by `sim` (the runway state machin
 feature), not by this contract. `core` defines the vocabulary and geometry; `sim`
 enforces the transitions.
 
-Runway occupancy — whether a landing is currently legal — is *derived* by `sim` from
+Runway occupancy — whether a landing is currently legal — is _derived_ by `sim` from
 aircraft positions relative to the runway geometry defined above, together with the
 separation and time-gap rules `sim` owns; multiple aircraft may use one runway in
 sequence provided those rules hold. The only runway fact carried here is `closed`,
 which no position or command can reconstruct.
 
 Aircraft lifecycle is deliberately **not** a stored field. An aircraft's kinematic
-phase (approaching, on final, landing, cleared the runway, exited) is *derived* from
+phase (approaching, on final, landing, cleared the runway, exited) is _derived_ from
 its `position` relative to runway geometry, and its clearance/authorization state is
-*derived* from the command log in the `Trace` — e.g. an aircraft is cleared to land
+_derived_ from the command log in the `Trace` — e.g. an aircraft is cleared to land
 iff it received a `clearLand` with no superseding `goAround`/`divert`/reassignment
 since. Neither is duplicated as an authored field on `AircraftState`, so observed
 state carries no value that can diverge from position or from the recorded commands.

@@ -136,7 +136,11 @@ const PARAM_KEYS = {
 } as const satisfies Record<CommandKind, readonly string[]>;
 
 /** Validates `params` matches exactly the field set `kind` requires — no extra fields. */
-function parseParamsForKind(kind: CommandKind, field: string, input: unknown): Result<CommandParamsMap[CommandKind]> {
+function parseParamsForKind(
+  kind: CommandKind,
+  field: string,
+  input: unknown,
+): Result<CommandParamsMap[CommandKind]> {
   const params = requireRecord(field, input, PARAM_KEYS[kind]);
   if (!params.ok) return err(params.error);
   const record = params.value;
@@ -146,7 +150,13 @@ function parseParamsForKind(kind: CommandKind, field: string, input: unknown): R
       const heading = requireInteger(`${field}.heading`, record["heading"]);
       if (!heading.ok) return err(heading.error);
       if (heading.value < 0 || heading.value >= 360_000) {
-        return err(schemaError(`${field}.heading`, "out-of-range", `${field}.heading must be in [0, 360000)`));
+        return err(
+          schemaError(
+            `${field}.heading`,
+            "out-of-range",
+            `${field}.heading must be in [0, 360000)`,
+          ),
+        );
       }
       return ok({ heading: heading.value as Millideg });
     }
@@ -154,7 +164,9 @@ function parseParamsForKind(kind: CommandKind, field: string, input: unknown): R
       const altitude = requireInteger(`${field}.altitude`, record["altitude"]);
       if (!altitude.ok) return err(altitude.error);
       if (altitude.value < 0) {
-        return err(schemaError(`${field}.altitude`, "out-of-range", `${field}.altitude must be >= 0`));
+        return err(
+          schemaError(`${field}.altitude`, "out-of-range", `${field}.altitude must be >= 0`),
+        );
       }
       return ok({ altitude: altitude.value as Mm });
     }
@@ -169,7 +181,13 @@ function parseParamsForKind(kind: CommandKind, field: string, input: unknown): R
     case "assignRunway": {
       const runwayId = record["runwayId"];
       if (typeof runwayId !== "string" || runwayId.length === 0) {
-        return err(schemaError(`${field}.runwayId`, "wrong-kind", `${field}.runwayId must be a non-empty string`));
+        return err(
+          schemaError(
+            `${field}.runwayId`,
+            "wrong-kind",
+            `${field}.runwayId must be a non-empty string`,
+          ),
+        );
       }
       return ok({ runwayId });
     }
@@ -198,13 +216,19 @@ export function parseCommand(input: unknown): Result<Command> {
   const kind = record["kind"];
   if (!isCommandKind(kind)) {
     return err(
-      schemaError("Command.kind", "wrong-kind", `Command.kind must be one of ${COMMAND_KINDS.join(", ")}`),
+      schemaError(
+        "Command.kind",
+        "wrong-kind",
+        `Command.kind must be one of ${COMMAND_KINDS.join(", ")}`,
+      ),
     );
   }
 
   const target = record["target"];
   if (typeof target !== "string" || target.length === 0) {
-    return err(schemaError("Command.target", "wrong-kind", "Command.target must be a non-empty string"));
+    return err(
+      schemaError("Command.target", "wrong-kind", "Command.target must be a non-empty string"),
+    );
   }
 
   const params = parseParamsForKind(kind, "Command.params", record["params"]);

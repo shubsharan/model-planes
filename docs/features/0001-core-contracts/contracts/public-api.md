@@ -1,7 +1,7 @@
 # Contract: `@model-planes/core` Public Surface
 
 The exported surface other packages import. Signatures are illustrative of the
-*contract* (names, inputs, guarantees), not final source. All quantities are integer
+_contract_ (names, inputs, guarantees), not final source. All quantities are integer
 base units per [ADR 0001](../../../adrs/0001-deterministic-state-representation.md).
 
 ## Constants

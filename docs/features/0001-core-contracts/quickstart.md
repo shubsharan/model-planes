@@ -47,15 +47,20 @@ const record: DecisionRecord = {
   index: 0,
   observed: snapshot,
   messages: [],
-  proposed: cmd,          // raw proposal preserved...
-  intervention: null,     // ...separately from any intervention...
-  applied: cmd,           // ...and from what was applied.
+  proposed: cmd, // raw proposal preserved...
+  intervention: null, // ...separately from any intervention...
+  applied: cmd, // ...and from what was applied.
   result: { aircraft: [], runways: [] },
   margins: {},
   meta: { provider: "none", model: "scripted" },
 };
 
-const bytes = serialize({ schemaVersion: SCHEMA_VERSION, seed: { root: 42 }, msPerTick: 100, records: [record] });
+const bytes = serialize({
+  schemaVersion: SCHEMA_VERSION,
+  seed: { root: 42 },
+  msPerTick: 100,
+  records: [record],
+});
 const back = deserialize(bytes).unwrap();
 
 // Determinism you can assert in a test:

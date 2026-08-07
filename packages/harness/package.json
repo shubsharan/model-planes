@@ -12,9 +12,9 @@
     "test": "echo \"@model-planes/harness: no tests yet\""
   },
   "dependencies": {
+    "@model-planes/controllers": "workspace:*",
     "@model-planes/core": "workspace:*",
-    "@model-planes/sim": "workspace:*",
     "@model-planes/scenarios": "workspace:*",
-    "@model-planes/controllers": "workspace:*"
+    "@model-planes/sim": "workspace:*"
   }
 }

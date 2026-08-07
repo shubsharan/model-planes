@@ -8,7 +8,7 @@ status: Active
 
 The repository is scaffold only: every package `src/` holds a placeholder, so there
 is no plant, no command vocabulary, and no trace. Nothing scientific is measurable
-until an authoritative simulator exists and is *provably* deterministic and
+until an authoritative simulator exists and is _provably_ deterministic and
 replayable — every later phase (tick-based benchmark, capacity study, robustness,
 real time) reads its results against traces this layer produces. This epic is the
 foundation gate of the [roadmap](../../roadmap.md): a controller comparison, a

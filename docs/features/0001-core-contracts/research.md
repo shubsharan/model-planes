@@ -16,12 +16,12 @@ decision, why it was chosen, and what was rejected.
   bounded airspace (~100 km ⇒ ~10⁸ mm) stays far inside the 2⁵³ exact-integer range,
   so plain integers suffice — no bigint, no decimal library.
 - **Alternatives considered**:
-  - *Floats with canonical shortest-round-trip formatting* — serialization can be made
+  - _Floats with canonical shortest-round-trip formatting_ — serialization can be made
     deterministic, but exact equality and cross-package value stability stay fragile;
     rejected for the contract layer where values are frozen and compared for replay.
-  - *Arbitrary-precision decimals / bigint everywhere* — exact but heavier and still
+  - _Arbitrary-precision decimals / bigint everywhere_ — exact but heavier and still
     needs canonical formatting; unnecessary given the bounded magnitude range.
-  - *Defer representation to `sim`* — rejected: the record/state schema is exactly
+  - _Defer representation to `sim`_ — rejected: the record/state schema is exactly
     where values are frozen and compared, so the representation must be fixed in
     `core`.
 
@@ -38,7 +38,7 @@ decision, why it was chosen, and what was rejected.
   enforce shape at compile time; runtime validators guard the deserialization/boundary
   path.
 - **Alternatives considered**:
-  - *A runtime schema library (e.g. a validation DSL)* — ergonomic, but adds a
+  - _A runtime schema library (e.g. a validation DSL)_ — ergonomic, but adds a
     dependency to the sink package and couples the wire format to a third party;
     rejected for now, revisitable if the surface grows.
 
@@ -54,9 +54,9 @@ decision, why it was chosen, and what was rejected.
   subprocess and comparing bytes. `turbo test` still `dependsOn ^build`, which is a
   no-op for the dependency sink `core`.
 - **Alternatives considered**:
-  - *Node built-in `node:test`* — zero-dependency, but weaker DX (no watch/config, terser
+  - _Node built-in `node:test`_ — zero-dependency, but weaker DX (no watch/config, terser
     assertions); not chosen given the project preference for Vitest.
-  - *Jest* — mature but heavier and historically ESM-friction-prone under `nodenext`;
+  - _Jest_ — mature but heavier and historically ESM-friction-prone under `nodenext`;
     rejected.
 
 ## R4 — Schema versioning scheme
@@ -68,11 +68,11 @@ decision, why it was chosen, and what was rejected.
   policies to be versioned; a monotonic integer is the simplest thing that lets a
   consumer detect a mismatch deterministically without semantic-version parsing.
 - **Alternatives considered**:
-  - *Semantic version string* — more expressive but invites lenient "compatible-range"
+  - _Semantic version string_ — more expressive but invites lenient "compatible-range"
     reads; a strict integer-equality check is safer for exact replay.
-  - *Per-entity version numbers* — an independent version line per entity (a
+  - _Per-entity version numbers_ — an independent version line per entity (a
     `DecisionRecord` at v3 inside a `Trace` at v1) is more granular but more bookkeeping
-    than the current surface needs. Note this is not the same as *stamping* the single
+    than the current surface needs. Note this is not the same as _stamping_ the single
     global version on each entity, which the Decision above does require: because every
     reader compares against the same constant, a nested tag and its enclosing document
     agree by construction, and the repetition costs nothing to maintain while keeping a
@@ -89,7 +89,7 @@ decision, why it was chosen, and what was rejected.
   separate fields — rather than a diff — makes attribution auditable and keeps a
   safety filter from ever making a controller look safe.
 - **Alternatives considered**:
-  - *Store only the applied command plus a change flag* — rejected: loses the raw
+  - _Store only the applied command plus a change flag_ — rejected: loses the raw
     proposal and defeats model-vs-system attribution.
 
 ## Resolved unknowns

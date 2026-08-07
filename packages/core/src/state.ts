@@ -15,7 +15,18 @@ import {
   requireUniqueIds,
   schemaError,
 } from "./validate.ts";
-import { type Mm, type Millideg, type MmPerSec, type MillidegPerTick, type Tick, asMm, asMillideg, asMmPerSec, asMillidegPerTick, asTick } from "./units.ts";
+import {
+  type Mm,
+  type Millideg,
+  type MmPerSec,
+  type MillidegPerTick,
+  type Tick,
+  asMm,
+  asMillideg,
+  asMmPerSec,
+  asMillidegPerTick,
+  asTick,
+} from "./units.ts";
 import { SCHEMA_VERSION } from "./validate.ts";
 
 /** Half-width of the bounded terminal airspace, in mm (ADR 0001: ~100 km radius). */
@@ -103,7 +114,12 @@ export function parseAircraftPerformanceLimits(
   const maxTurnRate = requireInteger(`${field}.maxTurnRate`, record["maxTurnRate"]);
   if (!maxTurnRate.ok) return err(maxTurnRate.error);
 
-  if (minSpeed.value < 0 || maxClimbRate.value < 0 || maxDescentRate.value < 0 || maxTurnRate.value < 0) {
+  if (
+    minSpeed.value < 0 ||
+    maxClimbRate.value < 0 ||
+    maxDescentRate.value < 0 ||
+    maxTurnRate.value < 0
+  ) {
     return err(schemaError(field, "out-of-range", `${field} rates and speeds must be >= 0`));
   }
   if (minSpeed.value > maxSpeed.value) {
@@ -331,7 +347,11 @@ export function parseWorldSnapshot(input: unknown): Result<WorldSnapshot> {
   const rawAircraft = record["aircraft"];
   if (!Array.isArray(rawAircraft)) {
     return err(
-      schemaError("WorldSnapshot.aircraft", "wrong-kind", "WorldSnapshot.aircraft must be an array"),
+      schemaError(
+        "WorldSnapshot.aircraft",
+        "wrong-kind",
+        "WorldSnapshot.aircraft must be an array",
+      ),
     );
   }
   const aircraft: AircraftState[] = [];

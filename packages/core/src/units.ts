@@ -104,7 +104,10 @@ const UNIT_TABLE: Readonly<Record<string, UnitDef>> = {
  * that round-trips the input — which is what `String` on a double yields — and
  * work from its integer mantissa, so every step below is integer arithmetic.
  */
-function asExactRatio(value: number, def: UnitDef): Result<{ numerator: number; denominator: number }> {
+function asExactRatio(
+  value: number,
+  def: UnitDef,
+): Result<{ numerator: number; denominator: number }> {
   if (!Number.isFinite(value)) {
     return err(schemaError("value", "not-integer", "quantity.value must be a finite number"));
   }
@@ -121,16 +124,26 @@ function asExactRatio(value: number, def: UnitDef): Result<{ numerator: number; 
   // integral mantissa: the shift below is non-negative exactly when
   // `decimals >= fractionPart.length - exponent`.
   const decimals = Math.max(0, fractionPart.length - exponent);
-  const mantissa = Number(`${integerPart}${fractionPart}e${exponent - fractionPart.length + decimals}`);
+  const mantissa = Number(
+    `${integerPart}${fractionPart}e${exponent - fractionPart.length + decimals}`,
+  );
   const numerator = mantissa * def.multiplyBy;
   const denominator = 10 ** decimals * def.divideBy;
 
   // ADR 0001 relies on every base-unit magnitude staying inside the exact
   // integer range; past it, integer arithmetic silently stops being exact, so
   // reject rather than return a value we cannot stand behind.
-  if (!Number.isSafeInteger(mantissa) || !Number.isSafeInteger(numerator) || !Number.isSafeInteger(denominator)) {
+  if (
+    !Number.isSafeInteger(mantissa) ||
+    !Number.isSafeInteger(numerator) ||
+    !Number.isSafeInteger(denominator)
+  ) {
     return err(
-      schemaError("value", "out-of-range", `converting ${value} exceeds the exact integer range (ADR 0001)`),
+      schemaError(
+        "value",
+        "out-of-range",
+        `converting ${value} exceeds the exact integer range (ADR 0001)`,
+      ),
     );
   }
   return ok({ numerator, denominator });
@@ -138,7 +151,13 @@ function asExactRatio(value: number, def: UnitDef): Result<{ numerator: number; 
 
 function resolveUnit(unit: string): Result<UnitDef> {
   if (unit === "" || unit === undefined || unit === null) {
-    return err(schemaError("unit", "missing", "quantity.unit is required — there is no implicit default unit"));
+    return err(
+      schemaError(
+        "unit",
+        "missing",
+        "quantity.unit is required — there is no implicit default unit",
+      ),
+    );
   }
   const def = UNIT_TABLE[unit];
   if (def === undefined) {
@@ -212,7 +231,9 @@ export function quantizeToBaseUnit(quantity: Quantity): Result<number> {
 
   const doubled = remainder * 2;
   const rounded =
-    doubled > denominator || (doubled === denominator && quotient % 2 !== 0) ? quotient + 1 : quotient;
+    doubled > denominator || (doubled === denominator && quotient % 2 !== 0)
+      ? quotient + 1
+      : quotient;
 
   // `-1 * 0` is `-0`, which is not a canonical integer (ADR 0001).
   return ok(negative && rounded !== 0 ? -rounded : rounded);
@@ -226,7 +247,9 @@ export function quantizeToBaseUnit(quantity: Quantity): Result<number> {
  */
 export function fromBaseUnit(value: number, toUnit: string): Result<number> {
   if (toUnit === "" || toUnit === undefined || toUnit === null) {
-    return err(schemaError("unit", "missing", "toUnit is required — there is no implicit default unit"));
+    return err(
+      schemaError("unit", "missing", "toUnit is required — there is no implicit default unit"),
+    );
   }
   const def = UNIT_TABLE[toUnit];
   if (def === undefined) {

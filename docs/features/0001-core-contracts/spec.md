@@ -99,7 +99,7 @@ rejected; derive sub-seeds from a fixed seed twice and confirm identical results
 
 - A command whose effective time precedes the observation time it was based on (a
   stale or back-dated command) must be representable and detectable; whether it is
-  *legal* is decided by the simulator, not by this contract.
+  _legal_ is decided by the simulator, not by this contract.
 - A required state or record field that is missing or malformed must be rejected, not
   silently defaulted.
 - A numeric value that could serialize differently across platforms or architectures

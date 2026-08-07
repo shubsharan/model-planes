@@ -53,7 +53,9 @@ export function parseIntervention(field: string, input: unknown): Result<Interve
   }
   const detail = record["detail"];
   if (detail !== undefined && typeof detail !== "string") {
-    return err(schemaError(`${field}.detail`, "wrong-kind", `${field}.detail must be a string when present`));
+    return err(
+      schemaError(`${field}.detail`, "wrong-kind", `${field}.detail must be a string when present`),
+    );
   }
   return ok(detail === undefined ? { reason } : { reason, detail });
 }
@@ -125,7 +127,9 @@ export function parseDecisionRecord(input: unknown): Result<DecisionRecord> {
   const index = requireInteger("DecisionRecord.index", record["index"]);
   if (!index.ok) return err(index.error);
   if (index.value < 0) {
-    return err(schemaError("DecisionRecord.index", "out-of-range", "DecisionRecord.index must be >= 0"));
+    return err(
+      schemaError("DecisionRecord.index", "out-of-range", "DecisionRecord.index must be >= 0"),
+    );
   }
 
   const observed = parseWorldSnapshot(record["observed"]);
@@ -133,9 +137,18 @@ export function parseDecisionRecord(input: unknown): Result<DecisionRecord> {
 
   const rawMessages = record["messages"];
   if (!Array.isArray(rawMessages)) {
-    return err(schemaError("DecisionRecord.messages", "wrong-kind", "DecisionRecord.messages must be an array"));
+    return err(
+      schemaError(
+        "DecisionRecord.messages",
+        "wrong-kind",
+        "DecisionRecord.messages must be an array",
+      ),
+    );
   }
-  const messages = requireCanonicalValue<readonly unknown[]>("DecisionRecord.messages", rawMessages);
+  const messages = requireCanonicalValue<readonly unknown[]>(
+    "DecisionRecord.messages",
+    rawMessages,
+  );
   if (!messages.ok) return err(messages.error);
 
   const proposed = parseCommand(record["proposed"]);
@@ -168,7 +181,11 @@ export function parseDecisionRecord(input: unknown): Result<DecisionRecord> {
   const rawResultAircraft = rawResult["aircraft"];
   if (!Array.isArray(rawResultAircraft)) {
     return err(
-      schemaError("DecisionRecord.result.aircraft", "wrong-kind", "DecisionRecord.result.aircraft must be an array"),
+      schemaError(
+        "DecisionRecord.result.aircraft",
+        "wrong-kind",
+        "DecisionRecord.result.aircraft must be an array",
+      ),
     );
   }
   const resultAircraft: AircraftState[] = [];
@@ -180,7 +197,11 @@ export function parseDecisionRecord(input: unknown): Result<DecisionRecord> {
   const rawResultRunways = rawResult["runways"];
   if (!Array.isArray(rawResultRunways)) {
     return err(
-      schemaError("DecisionRecord.result.runways", "wrong-kind", "DecisionRecord.result.runways must be an array"),
+      schemaError(
+        "DecisionRecord.result.runways",
+        "wrong-kind",
+        "DecisionRecord.result.runways must be an array",
+      ),
     );
   }
   const resultRunways: RunwayState[] = [];
@@ -270,7 +291,11 @@ export function parseTrace(input: unknown): Result<Trace> {
       const outOfOrder = simTime < prevSimTime || (simTime === prevSimTime && index <= prevIndex);
       if (outOfOrder) {
         return err(
-          schemaError(`Trace.records[${i}]`, "out-of-range", "Trace.records must be ordered by simTime then index"),
+          schemaError(
+            `Trace.records[${i}]`,
+            "out-of-range",
+            "Trace.records must be ordered by simTime then index",
+          ),
         );
       }
     }

@@ -47,10 +47,14 @@ function canonicalize(value: unknown, path: string): string {
   if (kind === "object") {
     const obj = value as Record<string, unknown>;
     const keys = Object.keys(obj).sort();
-    const entries = keys.map((key) => `${JSON.stringify(key)}:${canonicalize(obj[key], `${path}.${key}`)}`);
+    const entries = keys.map(
+      (key) => `${JSON.stringify(key)}:${canonicalize(obj[key], `${path}.${key}`)}`,
+    );
     return `{${entries.join(",")}}`;
   }
-  throw new SerializationError(schemaError(path, "wrong-kind", `${path} of type ${kind} is not serializable`));
+  throw new SerializationError(
+    schemaError(path, "wrong-kind", `${path} of type ${kind} is not serializable`),
+  );
 }
 
 const textEncoder = new TextEncoder();
@@ -116,7 +120,12 @@ export function deserialize<T = unknown>(bytes: Uint8Array): Result<T> {
   // shared check so a malformed or foreign tag (`"2"`, `null`, `1.5`) is a
   // rejection too. Comparing only mismatching *numbers* would let a version
   // that cannot possibly equal the integer constant through unchecked.
-  if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed) && "schemaVersion" in parsed) {
+  if (
+    typeof parsed === "object" &&
+    parsed !== null &&
+    !Array.isArray(parsed) &&
+    "schemaVersion" in parsed
+  ) {
     const schemaVersion = requireDeclaredConstant(
       "schemaVersion",
       (parsed as Record<string, unknown>)["schemaVersion"],

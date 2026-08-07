@@ -1,6 +1,6 @@
 ---
 name: speckit-workflow-check
-description: 'Spec-kit workflow command: speckit-workflow-check'
+description: "Spec-kit workflow command: speckit-workflow-check"
 metadata:
   author: github-spec-kit
   source: workflow:commands/speckit.workflow.check.md

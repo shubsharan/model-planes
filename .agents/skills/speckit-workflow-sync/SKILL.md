@@ -1,6 +1,6 @@
 ---
 name: speckit-workflow-sync
-description: 'Spec-kit workflow command: speckit-workflow-sync'
+description: "Spec-kit workflow command: speckit-workflow-sync"
 metadata:
   author: github-spec-kit
   source: workflow:commands/speckit.workflow.sync.md
