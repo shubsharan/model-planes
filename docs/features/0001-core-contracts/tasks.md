@@ -34,10 +34,10 @@ description: "Task list for feature: Core Contracts"
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T004 Governing gate — confirm [ADR 0001](../../adrs/0001-deterministic-state-representation.md) is **Accepted** (not Proposed) before implementation proceeds; the feature cannot move from Pending to Active while the ADR is unaccepted (per [plan.md](plan.md) Architecture Decisions)
-- [ ] T005 Define `SCHEMA_VERSION`, the `SchemaError` type, and reusable validation-boundary guards (integer-only, range, unique-id) in `packages/core/src/validate.ts` (FR-011)
-- [ ] T006 [P] Define base-unit branded integer types (mm, millidegree, mm/s, tick) in `packages/core/src/units.ts` — type-level only; exact conversions are deferred to US3 (FR-009)
-- [ ] T007 Create the public barrel `packages/core/src/index.ts` re-exporting the surface described in [contracts/public-api.md](contracts/public-api.md); each user story appends its exports here
+- [X] T004 Governing gate — confirm [ADR 0001](../../adrs/0001-deterministic-state-representation.md) is **Accepted** (not Proposed) before implementation proceeds; the feature cannot move from Pending to Active while the ADR is unaccepted (per [plan.md](plan.md) Architecture Decisions)
+- [X] T005 Define `SCHEMA_VERSION`, the `SchemaError` type, and reusable validation-boundary guards (integer-only, range, unique-id) in `packages/core/src/validate.ts` (FR-011)
+- [X] T006 [P] Define base-unit branded integer types (mm, millidegree, mm/s, tick) in `packages/core/src/units.ts` — type-level only; exact conversions are deferred to US3 (FR-009)
+- [X] T007 Create the public barrel `packages/core/src/index.ts` re-exporting the surface described in [contracts/public-api.md](contracts/public-api.md); each user story appends its exports here
 
 **Checkpoint**: Test harness green (empty), ADR accepted, shared primitives available — user stories can begin.
 
