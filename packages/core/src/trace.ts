@@ -13,6 +13,7 @@ import {
   SCHEMA_VERSION,
   err,
   ok,
+  requireArray,
   requireDeclaredConstant,
   requireInteger,
   requireRecord,
@@ -178,38 +179,20 @@ export function parseDecisionRecord(input: unknown): Result<DecisionRecord> {
   const result = requireRecord("DecisionRecord.result", record["result"], ["aircraft", "runways"]);
   if (!result.ok) return err(result.error);
   const rawResult = result.value;
-  const rawResultAircraft = rawResult["aircraft"];
-  if (!Array.isArray(rawResultAircraft)) {
-    return err(
-      schemaError(
-        "DecisionRecord.result.aircraft",
-        "wrong-kind",
-        "DecisionRecord.result.aircraft must be an array",
-      ),
-    );
-  }
-  const resultAircraft: AircraftState[] = [];
-  for (let i = 0; i < rawResultAircraft.length; i++) {
-    const parsed = parseAircraftState(`DecisionRecord.result.aircraft[${i}]`, rawResultAircraft[i]);
-    if (!parsed.ok) return err(parsed.error);
-    resultAircraft.push(parsed.value);
-  }
-  const rawResultRunways = rawResult["runways"];
-  if (!Array.isArray(rawResultRunways)) {
-    return err(
-      schemaError(
-        "DecisionRecord.result.runways",
-        "wrong-kind",
-        "DecisionRecord.result.runways must be an array",
-      ),
-    );
-  }
-  const resultRunways: RunwayState[] = [];
-  for (let i = 0; i < rawResultRunways.length; i++) {
-    const parsed = parseRunwayState(`DecisionRecord.result.runways[${i}]`, rawResultRunways[i]);
-    if (!parsed.ok) return err(parsed.error);
-    resultRunways.push(parsed.value);
-  }
+
+  const resultAircraft = requireArray(
+    "DecisionRecord.result.aircraft",
+    rawResult["aircraft"],
+    parseAircraftState,
+  );
+  if (!resultAircraft.ok) return err(resultAircraft.error);
+
+  const resultRunways = requireArray(
+    "DecisionRecord.result.runways",
+    rawResult["runways"],
+    parseRunwayState,
+  );
+  if (!resultRunways.ok) return err(resultRunways.error);
 
   // Opaque to this contract, but not unconstrained: validated against the
   // canonical serializable domain so a parsed record is guaranteed to persist
@@ -228,7 +211,7 @@ export function parseDecisionRecord(input: unknown): Result<DecisionRecord> {
     proposed: proposed.value,
     intervention,
     applied: applied.value,
-    result: { aircraft: resultAircraft, runways: resultRunways },
+    result: { aircraft: resultAircraft.value, runways: resultRunways.value },
     margins: margins.value,
     meta: meta.value,
   });
@@ -274,17 +257,19 @@ export function parseTrace(input: unknown): Result<Trace> {
   const msPerTick = requireDeclaredConstant("Trace.msPerTick", record["msPerTick"], MS_PER_TICK);
   if (!msPerTick.ok) return err(msPerTick.error);
 
-  const rawRecords = record["records"];
-  if (!Array.isArray(rawRecords)) {
-    return err(schemaError("Trace.records", "wrong-kind", "Trace.records must be an array"));
-  }
+  // `parseDecisionRecord` ignores the item field `requireArray` builds (it
+  // names its own fields `DecisionRecord.*`, not `Trace.records[i].*`) —
+  // that already matches this function's prior behavior.
+  const records = requireArray("Trace.records", record["records"], (_itemField, item) =>
+    parseDecisionRecord(item),
+  );
+  if (!records.ok) return err(records.error);
 
-  const records: DecisionRecord[] = [];
   let previous: readonly [number, number] | null = null; // [simTime, index]
-  for (let i = 0; i < rawRecords.length; i++) {
-    const parsed = parseDecisionRecord(rawRecords[i]);
-    if (!parsed.ok) return err(parsed.error);
-    const current: readonly [number, number] = [parsed.value.observed.simTime, parsed.value.index];
+  for (let i = 0; i < records.value.length; i++) {
+    const item = records.value[i];
+    if (item === undefined) continue;
+    const current: readonly [number, number] = [item.observed.simTime, item.index];
     if (previous !== null) {
       const [prevSimTime, prevIndex] = previous;
       const [simTime, index] = current;
@@ -300,13 +285,12 @@ export function parseTrace(input: unknown): Result<Trace> {
       }
     }
     previous = current;
-    records.push(parsed.value);
   }
 
   return ok({
     schemaVersion: schemaVersion.value,
     seed: { root: root.value },
     msPerTick: msPerTick.value,
-    records,
+    records: records.value,
   });
 }

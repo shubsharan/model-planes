@@ -192,3 +192,27 @@ export function requireDefined<T>(field: string, value: T | undefined | null): R
   }
   return ok(value);
 }
+
+/**
+ * Rejects a non-array `input`, then parses each element with `parseItem`,
+ * bailing on the first failure. `parseItem` receives `${field}[i]` so a
+ * rejected element's error names its position (e.g.
+ * `WorldSnapshot.aircraft[2]`) the same way every other nested parser in
+ * this package does.
+ */
+export function requireArray<T>(
+  field: string,
+  input: unknown,
+  parseItem: (itemField: string, item: unknown) => Result<T>,
+): Result<readonly T[]> {
+  if (!Array.isArray(input)) {
+    return err(schemaError(field, "wrong-kind", `${field} must be an array`));
+  }
+  const items: T[] = [];
+  for (let i = 0; i < input.length; i++) {
+    const parsed = parseItem(`${field}[${i}]`, input[i]);
+    if (!parsed.ok) return err(parsed.error);
+    items.push(parsed.value);
+  }
+  return ok(items);
+}

@@ -9,6 +9,7 @@ import {
   type Result,
   err,
   ok,
+  requireArray,
   requireDeclaredConstant,
   requireInteger,
   requireRange,
@@ -344,44 +345,20 @@ export function parseWorldSnapshot(input: unknown): Result<WorldSnapshot> {
     );
   }
 
-  const rawAircraft = record["aircraft"];
-  if (!Array.isArray(rawAircraft)) {
-    return err(
-      schemaError(
-        "WorldSnapshot.aircraft",
-        "wrong-kind",
-        "WorldSnapshot.aircraft must be an array",
-      ),
-    );
-  }
-  const aircraft: AircraftState[] = [];
-  for (let i = 0; i < rawAircraft.length; i++) {
-    const parsed = parseAircraftState(`WorldSnapshot.aircraft[${i}]`, rawAircraft[i]);
-    if (!parsed.ok) return err(parsed.error);
-    aircraft.push(parsed.value);
-  }
-  const uniqueAircraft = requireUniqueIds("WorldSnapshot.aircraft", aircraft, (a) => a.id);
+  const aircraft = requireArray("WorldSnapshot.aircraft", record["aircraft"], parseAircraftState);
+  if (!aircraft.ok) return err(aircraft.error);
+  const uniqueAircraft = requireUniqueIds("WorldSnapshot.aircraft", aircraft.value, (a) => a.id);
   if (!uniqueAircraft.ok) return err(uniqueAircraft.error);
 
-  const rawRunways = record["runways"];
-  if (!Array.isArray(rawRunways)) {
-    return err(
-      schemaError("WorldSnapshot.runways", "wrong-kind", "WorldSnapshot.runways must be an array"),
-    );
-  }
-  const runways: RunwayState[] = [];
-  for (let i = 0; i < rawRunways.length; i++) {
-    const parsed = parseRunwayState(`WorldSnapshot.runways[${i}]`, rawRunways[i]);
-    if (!parsed.ok) return err(parsed.error);
-    runways.push(parsed.value);
-  }
-  const uniqueRunways = requireUniqueIds("WorldSnapshot.runways", runways, (r) => r.id);
+  const runways = requireArray("WorldSnapshot.runways", record["runways"], parseRunwayState);
+  if (!runways.ok) return err(runways.error);
+  const uniqueRunways = requireUniqueIds("WorldSnapshot.runways", runways.value, (r) => r.id);
   if (!uniqueRunways.ok) return err(uniqueRunways.error);
 
   return ok({
     schemaVersion: schemaVersion.value,
     simTime: asTick(simTime.value),
-    aircraft,
-    runways,
+    aircraft: aircraft.value,
+    runways: runways.value,
   });
 }
