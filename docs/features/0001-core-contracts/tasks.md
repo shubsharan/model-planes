@@ -53,18 +53,18 @@ description: "Task list for feature: Core Contracts"
 
 > **NOTE: Write these FIRST and observe them FAIL before implementing.**
 
-- [ ] T008 [P] [US1] Failing Vitest spec `packages/core/test/vocabulary.test.ts`: build a `WorldSnapshot`, emit one of every `CommandKind`, assert each command exposes only vocabulary params (no coordinate/motion override) and carries `observedAt` + `effectiveAt` (spec US1 Independent Test; FR-002, FR-003, FR-004)
-- [ ] T009 [P] [US1] Failing Vitest spec `packages/core/test/state-validate.test.ts`: malformed/incomplete `AircraftState`, `RunwayState`, and `Command` values are rejected rather than defaulted (FR-011, SC-006 for these entities)
+- [X] T008 [P] [US1] Failing Vitest spec `packages/core/test/vocabulary.test.ts`: build a `WorldSnapshot`, emit one of every `CommandKind`, assert each command exposes only vocabulary params (no coordinate/motion override) and carries `observedAt` + `effectiveAt` (spec US1 Independent Test; FR-002, FR-003, FR-004)
+- [X] T009 [P] [US1] Failing Vitest spec `packages/core/test/state-validate.test.ts`: malformed/incomplete `AircraftState`, `RunwayState`, and `Command` values are rejected rather than defaulted (FR-011, SC-006 for these entities)
 
 ### Implementation for User Story 1
 
-- [ ] T010 [P] [US1] Implement `Vec3`/`Position`, `AircraftPerformanceLimits`, and the `AircraftClass` enum with validation in `packages/core/src/state.ts` (FR-001)
-- [ ] T011 [US1] Implement `AircraftState` (id, position, heading, speed, class, limits, separationRequirement, fuelOrWindowRemaining — **no `mode` field**) with validation in `packages/core/src/state.ts` (FR-001; lifecycle/clearance are derived downstream per [data-model.md](data-model.md))
-- [ ] T012 [US1] Implement `RunwayState` (id, `threshold1`/`threshold2`, `width`, `closed` — occupancy is **not** stored, it is derived) with validation (`threshold1 ≠ threshold2`, `width > 0`, endpoints in bounds) in `packages/core/src/state.ts` (FR-001)
-- [ ] T013 [US1] Implement `WorldSnapshot` (simTime ≥ 0, schemaVersion, unique aircraft/runway ids) in `packages/core/src/state.ts` (FR-001)
-- [ ] T014 [US1] Implement the `CommandKind` vocabulary and `Command` (kind, target, kind-specific `params`, `observedAt`, `effectiveAt`) with constructors, `params`-match-`kind` validation, and the no-coordinate invariant in `packages/core/src/command.ts` (FR-002, FR-003, FR-004)
-- [ ] T015 [US1] Re-export US1 types from `packages/core/src/index.ts`
-- [ ] T016 [US1] Run T008 and T009; confirm both now pass
+- [X] T010 [P] [US1] Implement `Vec3`/`Position`, `AircraftPerformanceLimits`, and the `AircraftClass` enum with validation in `packages/core/src/state.ts` (FR-001)
+- [X] T011 [US1] Implement `AircraftState` (id, position, heading, speed, class, limits, separationRequirement, fuelOrWindowRemaining — **no `mode` field**) with validation in `packages/core/src/state.ts` (FR-001; lifecycle/clearance are derived downstream per [data-model.md](data-model.md))
+- [X] T012 [US1] Implement `RunwayState` (id, `threshold1`/`threshold2`, `width`, `closed` — occupancy is **not** stored, it is derived) with validation (`threshold1 ≠ threshold2`, `width > 0`, endpoints in bounds) in `packages/core/src/state.ts` (FR-001)
+- [X] T013 [US1] Implement `WorldSnapshot` (simTime ≥ 0, schemaVersion, unique aircraft/runway ids) in `packages/core/src/state.ts` (FR-001)
+- [X] T014 [US1] Implement the `CommandKind` vocabulary and `Command` (kind, target, kind-specific `params`, `observedAt`, `effectiveAt`) with constructors, `params`-match-`kind` validation, and the no-coordinate invariant in `packages/core/src/command.ts` (FR-002, FR-003, FR-004)
+- [X] T015 [US1] Re-export US1 types from `packages/core/src/index.ts`
+- [X] T016 [US1] Run T008 and T009; confirm both now pass
 
 **Checkpoint**: A consumer can build a snapshot and emit every command type — MVP is functional and independently testable.
 

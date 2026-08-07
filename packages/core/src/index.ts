@@ -19,4 +19,46 @@ export {
   type MmPerSec,
   type Tick,
   type MillidegPerTick,
+  asMm,
+  asMillideg,
+  asMmPerSec,
+  asTick,
+  asMillidegPerTick,
 } from "./units.js";
+
+// --- User Story 1: state + command vocabulary --------------------------------
+export {
+  AIRCRAFT_CLASSES,
+  AIRSPACE_BOUND_MM,
+  type AircraftClass,
+  type AircraftPerformanceLimits,
+  type AircraftState,
+  type RunwayState,
+  type SeparationRequirement,
+  type Vec3,
+  type Position,
+  type WorldSnapshot,
+  isAircraftClass,
+  parseAircraftPerformanceLimits,
+  parseAircraftState,
+  parseRunwayState,
+  parseSeparationRequirement,
+  parseVec3,
+  parseWorldSnapshot,
+} from "./state.js";
+
+export {
+  COMMAND_KINDS,
+  type Command,
+  type CommandKind,
+  assignAltitude,
+  assignHeading,
+  assignRunway,
+  assignSpeed,
+  clearApproach,
+  clearLand,
+  divert,
+  goAround,
+  hold,
+  parseCommand,
+} from "./command.js";
