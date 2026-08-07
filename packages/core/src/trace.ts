@@ -5,13 +5,20 @@
 // diff — so a safety filter can never make a controller look safer than it
 // was (FR-006, SC-003; research.md R5).
 import { parseCommand, type Command } from "./command.ts";
+import { requireCanonicalRecord, requireCanonicalValue } from "./serialize.ts";
 import { parseAircraftState, parseRunwayState, parseWorldSnapshot } from "./state.ts";
 import type { AircraftState, RunwayState, WorldSnapshot } from "./state.ts";
-import { SCHEMA_VERSION, err, ok, requireInteger, schemaError, type Result } from "./validate.ts";
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
+import { MS_PER_TICK } from "./units.ts";
+import {
+  SCHEMA_VERSION,
+  err,
+  ok,
+  requireDeclaredConstant,
+  requireInteger,
+  requireRecord,
+  schemaError,
+  type Result,
+} from "./validate.ts";
 
 // --- Intervention -----------------------------------------------------------
 
@@ -30,10 +37,11 @@ function isInterventionReason(value: unknown): value is InterventionReason {
 }
 
 export function parseIntervention(field: string, input: unknown): Result<Intervention> {
-  if (!isRecord(input)) {
-    return err(schemaError(field, "wrong-kind", `${field} must be an object`));
-  }
-  const reason = input["reason"];
+  const intervention = requireRecord(field, input, ["reason", "detail"]);
+  if (!intervention.ok) return err(intervention.error);
+  const record = intervention.value;
+
+  const reason = record["reason"];
   if (!isInterventionReason(reason)) {
     return err(
       schemaError(
@@ -43,7 +51,7 @@ export function parseIntervention(field: string, input: unknown): Result<Interve
       ),
     );
   }
-  const detail = input["detail"];
+  const detail = record["detail"];
   if (detail !== undefined && typeof detail !== "string") {
     return err(schemaError(`${field}.detail`, "wrong-kind", `${field}.detail must be a string when present`));
   }
@@ -61,11 +69,23 @@ export interface DecisionResult {
 /**
  * The immutable per-decision entry: observed state, controller messages,
  * raw proposal, intervention, applied command, resulting state, safety
- * margins/scoring events, and run metadata (FR-005). `messages`, `margins`,
- * and `meta` are opaque payloads owned by other packages (FR-012) — this
- * contract only guarantees they round-trip through canonical serialization.
+ * margins/scoring events, and run metadata (FR-005).
+ *
+ * `schemaVersion` is stamped here as well as on the enclosing `Trace` (FR-007,
+ * ADR 0001: "an explicit schema-version tag on every trace and record") so a
+ * record lifted out of a trace — appended to a run log, replayed on its own —
+ * is still self-describing. There is one global `SCHEMA_VERSION`, not a
+ * per-entity version line (research.md R4), so the nested tag and its
+ * enclosing document agree by construction and the repetition acts as a
+ * consistency check rather than extra bookkeeping.
+ *
+ * `messages`, `margins`, and `meta` are opaque payloads owned by other
+ * packages (FR-012). This contract does not interpret them, but it does
+ * enforce that they lie in the canonical serializable value domain, so a
+ * record that parses is guaranteed to persist and replay (FR-008).
  */
 export interface DecisionRecord {
+  readonly schemaVersion: number;
   readonly index: number;
   readonly observed: WorldSnapshot;
   readonly messages: readonly unknown[];
@@ -77,33 +97,55 @@ export interface DecisionRecord {
   readonly meta: Readonly<Record<string, unknown>>;
 }
 
-export function parseDecisionRecord(input: unknown): Result<DecisionRecord> {
-  if (!isRecord(input)) {
-    return err(schemaError("DecisionRecord", "wrong-kind", "DecisionRecord must be an object"));
-  }
+const DECISION_RECORD_KEYS = [
+  "schemaVersion",
+  "index",
+  "observed",
+  "messages",
+  "proposed",
+  "intervention",
+  "applied",
+  "result",
+  "margins",
+  "meta",
+] as const;
 
-  const index = requireInteger("DecisionRecord.index", input["index"]);
+export function parseDecisionRecord(input: unknown): Result<DecisionRecord> {
+  const decisionRecord = requireRecord("DecisionRecord", input, DECISION_RECORD_KEYS);
+  if (!decisionRecord.ok) return err(decisionRecord.error);
+  const record = decisionRecord.value;
+
+  const schemaVersion = requireDeclaredConstant(
+    "DecisionRecord.schemaVersion",
+    record["schemaVersion"],
+    SCHEMA_VERSION,
+  );
+  if (!schemaVersion.ok) return err(schemaVersion.error);
+
+  const index = requireInteger("DecisionRecord.index", record["index"]);
   if (!index.ok) return err(index.error);
   if (index.value < 0) {
     return err(schemaError("DecisionRecord.index", "out-of-range", "DecisionRecord.index must be >= 0"));
   }
 
-  const observed = parseWorldSnapshot(input["observed"]);
+  const observed = parseWorldSnapshot(record["observed"]);
   if (!observed.ok) return err(observed.error);
 
-  const rawMessages = input["messages"];
+  const rawMessages = record["messages"];
   if (!Array.isArray(rawMessages)) {
     return err(schemaError("DecisionRecord.messages", "wrong-kind", "DecisionRecord.messages must be an array"));
   }
+  const messages = requireCanonicalValue<readonly unknown[]>("DecisionRecord.messages", rawMessages);
+  if (!messages.ok) return err(messages.error);
 
-  const proposed = parseCommand(input["proposed"]);
+  const proposed = parseCommand(record["proposed"]);
   if (!proposed.ok) return err(proposed.error);
 
-  const rawIntervention = input["intervention"];
+  const rawIntervention = record["intervention"];
   let intervention: Intervention | null;
   if (rawIntervention === null) {
     intervention = null;
-  } else if (!("intervention" in input)) {
+  } else if (!("intervention" in record)) {
     return err(
       schemaError(
         "DecisionRecord.intervention",
@@ -117,13 +159,12 @@ export function parseDecisionRecord(input: unknown): Result<DecisionRecord> {
     intervention = parsedIntervention.value;
   }
 
-  const applied = parseCommand(input["applied"]);
+  const applied = parseCommand(record["applied"]);
   if (!applied.ok) return err(applied.error);
 
-  const rawResult = input["result"];
-  if (!isRecord(rawResult)) {
-    return err(schemaError("DecisionRecord.result", "wrong-kind", "DecisionRecord.result must be an object"));
-  }
+  const result = requireRecord("DecisionRecord.result", record["result"], ["aircraft", "runways"]);
+  if (!result.ok) return err(result.error);
+  const rawResult = result.value;
   const rawResultAircraft = rawResult["aircraft"];
   if (!Array.isArray(rawResultAircraft)) {
     return err(
@@ -149,26 +190,26 @@ export function parseDecisionRecord(input: unknown): Result<DecisionRecord> {
     resultRunways.push(parsed.value);
   }
 
-  const margins = input["margins"];
-  if (!isRecord(margins)) {
-    return err(schemaError("DecisionRecord.margins", "wrong-kind", "DecisionRecord.margins must be an object"));
-  }
+  // Opaque to this contract, but not unconstrained: validated against the
+  // canonical serializable domain so a parsed record is guaranteed to persist
+  // and replay, rather than failing later at serialization time.
+  const margins = requireCanonicalRecord("DecisionRecord.margins", record["margins"]);
+  if (!margins.ok) return err(margins.error);
 
-  const meta = input["meta"];
-  if (!isRecord(meta)) {
-    return err(schemaError("DecisionRecord.meta", "wrong-kind", "DecisionRecord.meta must be an object"));
-  }
+  const meta = requireCanonicalRecord("DecisionRecord.meta", record["meta"]);
+  if (!meta.ok) return err(meta.error);
 
   return ok({
+    schemaVersion: schemaVersion.value,
     index: index.value,
     observed: observed.value,
-    messages: rawMessages,
+    messages: messages.value,
     proposed: proposed.value,
     intervention,
     applied: applied.value,
     result: { aircraft: resultAircraft, runways: resultRunways },
-    margins,
-    meta,
+    margins: margins.value,
+    meta: meta.value,
   });
 }
 
@@ -189,36 +230,30 @@ export interface Trace {
 }
 
 export function parseTrace(input: unknown): Result<Trace> {
-  if (!isRecord(input)) {
-    return err(schemaError("Trace", "wrong-kind", "Trace must be an object"));
-  }
+  const trace = requireRecord("Trace", input, ["schemaVersion", "seed", "msPerTick", "records"]);
+  if (!trace.ok) return err(trace.error);
+  const record = trace.value;
 
-  const schemaVersion = requireInteger("Trace.schemaVersion", input["schemaVersion"]);
+  const schemaVersion = requireDeclaredConstant(
+    "Trace.schemaVersion",
+    record["schemaVersion"],
+    SCHEMA_VERSION,
+  );
   if (!schemaVersion.ok) return err(schemaVersion.error);
-  if (schemaVersion.value !== SCHEMA_VERSION) {
-    return err(
-      schemaError(
-        "Trace.schemaVersion",
-        "version-mismatch",
-        `expected schemaVersion ${SCHEMA_VERSION}, got ${schemaVersion.value}`,
-      ),
-    );
-  }
 
-  const rawSeed = input["seed"];
-  if (!isRecord(rawSeed)) {
-    return err(schemaError("Trace.seed", "wrong-kind", "Trace.seed must be an object"));
-  }
-  const root = requireInteger("Trace.seed.root", rawSeed["root"]);
+  const seed = requireRecord("Trace.seed", record["seed"], ["root"]);
+  if (!seed.ok) return err(seed.error);
+  const root = requireInteger("Trace.seed.root", seed.value["root"]);
   if (!root.ok) return err(root.error);
 
-  const msPerTick = requireInteger("Trace.msPerTick", input["msPerTick"]);
+  // The tick resolution is fixed by the schema, not chosen per trace: a trace
+  // declaring 200 ms would silently reinterpret every recorded timestamp. ADR
+  // 0001 makes a change to the base unit a schema-version change, so any other
+  // value means this data was written under a different schema.
+  const msPerTick = requireDeclaredConstant("Trace.msPerTick", record["msPerTick"], MS_PER_TICK);
   if (!msPerTick.ok) return err(msPerTick.error);
-  if (msPerTick.value <= 0) {
-    return err(schemaError("Trace.msPerTick", "out-of-range", "Trace.msPerTick must be > 0"));
-  }
 
-  const rawRecords = input["records"];
+  const rawRecords = record["records"];
   if (!Array.isArray(rawRecords)) {
     return err(schemaError("Trace.records", "wrong-kind", "Trace.records must be an array"));
   }

@@ -139,3 +139,37 @@ describe("AircraftState/RunwayState/Command validation rejects malformed input (
     expect(result.ok).toBe(false);
   });
 });
+
+// -0 is admitted by `Number.isInteger` but serializes to "0", so a value
+// accepted here would silently fail to round-trip identically. It is one of
+// the representation hazards ADR 0001 names, so the shared definition of a
+// canonical integer excludes it — and every parser inherits that.
+describe("negative zero is not a canonical integer (ADR 0001)", () => {
+  it("rejects -0 in a snapshot's numeric field", () => {
+    expect(parseWorldSnapshot({ ...snapshotWith({}), simTime: -0 }).ok).toBe(false);
+  });
+
+  it("rejects -0 in a nested position component", () => {
+    const result = parseWorldSnapshot(
+      snapshotWith({
+        aircraft: [{ ...validAircraft, position: { ...validAircraft.position, x: -0 } }],
+      }),
+    );
+    expect(result.ok).toBe(false);
+  });
+
+  it("rejects -0 in a command timestamp", () => {
+    const result = parseCommand({
+      kind: "hold",
+      target: "AC1",
+      params: {},
+      observedAt: -0,
+      effectiveAt: 1,
+    });
+    expect(result.ok).toBe(false);
+  });
+
+  it("still accepts positive zero", () => {
+    expect(parseWorldSnapshot({ ...snapshotWith({}), simTime: 0 }).ok).toBe(true);
+  });
+});

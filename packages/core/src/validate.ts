@@ -18,7 +18,8 @@ export type SchemaErrorReason =
   | "wrong-kind"
   | "version-mismatch"
   | "duplicate-id"
-  | "not-integer";
+  | "not-integer"
+  | "unknown-field";
 
 /** Structured rejection: names the offending field and why (FR-011). */
 export interface SchemaError {
@@ -67,16 +68,82 @@ export function err<T, E extends SchemaError = SchemaError>(error: E): Result<T,
 
 // --- Reusable validation-boundary guards -----------------------------------
 
-/** True only for a finite, integer number (ADR 0001: no floats in state/commands/trace). */
+/**
+ * True only for a finite, integer number (ADR 0001: no floats in state/
+ * commands/trace). `-0` is excluded: it is one of the representation hazards
+ * ADR 0001 names, it is indistinguishable from `0` under `===` but not under
+ * `Object.is`, and it does not survive canonical serialization (`String(-0)`
+ * is `"0"`), so admitting it would break the round-trip identity guarantee.
+ * This is the single definition of a canonical number — `serialize.ts` and
+ * every parser funnel through it, so the exclusion holds everywhere.
+ */
 export function isInteger(value: unknown): value is number {
-  return typeof value === "number" && Number.isInteger(value);
+  return typeof value === "number" && Number.isInteger(value) && !Object.is(value, -0);
+}
+
+/** `String(-0)` is `"0"`, which would make a `-0` rejection unreadable. */
+function describe(value: unknown): string {
+  return Object.is(value, -0) ? "-0" : String(value);
 }
 
 export function requireInteger(field: string, value: unknown): Result<number> {
   if (!isInteger(value)) {
-    return err(schemaError(field, "not-integer", `${field} must be an integer, got ${String(value)}`));
+    return err(schemaError(field, "not-integer", `${field} must be an integer, got ${describe(value)}`));
   }
   return ok(value);
+}
+
+/**
+ * The record gate every parser opens with: rejects a non-object, and rejects
+ * any key outside `knownKeys`. Unknown fields must surface as an explicit
+ * error rather than being dropped (spec Edge Cases) — silently ignoring them
+ * would let unsupported intent, including a coordinate or motion override on
+ * a command (FR-004), pass as a valid value.
+ */
+export function requireRecord(
+  field: string,
+  input: unknown,
+  knownKeys: readonly string[],
+): Result<Record<string, unknown>> {
+  if (typeof input !== "object" || input === null || Array.isArray(input)) {
+    return err(schemaError(field, "wrong-kind", `${field} must be an object`));
+  }
+  const record = input as Record<string, unknown>;
+  const known = new Set(knownKeys);
+  for (const key of Object.keys(record)) {
+    if (!known.has(key)) {
+      return err(
+        schemaError(
+          `${field}.${key}`,
+          "unknown-field",
+          `${field} has unknown field "${key}" — expected only ${knownKeys.join(", ")}`,
+        ),
+      );
+    }
+  }
+  return ok(record);
+}
+
+/**
+ * An integer field that only ever echoes a schema-declared constant
+ * (`SCHEMA_VERSION`, `MS_PER_TICK`). Any other value means the data was
+ * written under a different schema — ADR 0001 makes a change to a base unit
+ * or the tick resolution a schema-version change — so the rejection reason is
+ * `version-mismatch` rather than a range error.
+ */
+export function requireDeclaredConstant(
+  field: string,
+  input: unknown,
+  expected: number,
+): Result<number> {
+  const value = requireInteger(field, input);
+  if (!value.ok) return err(value.error);
+  if (value.value !== expected) {
+    return err(
+      schemaError(field, "version-mismatch", `expected ${field} ${expected}, got ${value.value}`),
+    );
+  }
+  return ok(value.value);
 }
 
 export function requireRange(

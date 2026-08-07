@@ -39,4 +39,31 @@ describe("canonical deterministic serialization (US2, FR-007, FR-008)", () => {
     const bytes = serialize(buildSampleTrace());
     expect(deserialize(bytes).ok).toBe(true);
   });
+
+  // `Number.isInteger(-0)` is true but `String(-0)` is `"0"`, so admitting -0
+  // would mean a value that does not round-trip identically under `Object.is`
+  // while still claiming to (ADR 0001 representation hazards).
+  it("rejects -0, which cannot round-trip identically", () => {
+    expect(() => serialize({ simTime: -0 })).toThrow();
+  });
+
+  it("round-trips every accepted number identically under Object.is", () => {
+    const values = { zero: 0, positive: 42, negative: -42, large: 100_000_000 };
+    const back = deserialize<typeof values>(serialize(values)).unwrap();
+    for (const key of Object.keys(values) as (keyof typeof values)[]) {
+      expect(Object.is(back[key], values[key])).toBe(true);
+    }
+  });
+
+  it("rejects a non-numeric schemaVersion, which cannot equal the integer constant", () => {
+    const bytes = new TextEncoder().encode('{"schemaVersion":"2"}');
+    expect(deserialize(bytes).ok).toBe(false);
+  });
+
+  it.each([['{"schemaVersion":null}'], ['{"schemaVersion":1.5}'], ['{"schemaVersion":true}']])(
+    "rejects malformed schemaVersion %s",
+    (json) => {
+      expect(deserialize(new TextEncoder().encode(json)).ok).toBe(false);
+    },
+  );
 });

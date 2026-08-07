@@ -5,11 +5,16 @@
 // deserialize round trip reproduces an identical value. `deserialize`
 // additionally rejects a value whose top-level `schemaVersion` differs from
 // `SCHEMA_VERSION` (FR-007, SC-004).
-import { SCHEMA_VERSION, SchemaValidationError, err, ok, schemaError, type Result } from "./validate.ts";
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
+import {
+  SCHEMA_VERSION,
+  SchemaValidationError,
+  err,
+  isInteger,
+  ok,
+  requireDeclaredConstant,
+  schemaError,
+  type Result,
+} from "./validate.ts";
 
 /** Thrown by `serialize()` when a value cannot be canonically encoded. */
 export class SerializationError extends SchemaValidationError {
@@ -24,13 +29,16 @@ function canonicalize(value: unknown, path: string): string {
   const kind = typeof value;
   if (kind === "boolean") return value ? "true" : "false";
   if (kind === "number") {
-    const n = value as number;
-    if (!Number.isInteger(n)) {
+    // The shared `isInteger` — not `Number.isInteger` — so the canonical
+    // number domain is defined in exactly one place. It also excludes `-0`,
+    // which `String` would emit as `"0"` and silently break round-trip
+    // identity under `Object.is` (ADR 0001 representation hazards).
+    if (!isInteger(value)) {
       throw new SerializationError(
         schemaError(path, "not-integer", `${path} must be an integer to serialize (ADR 0001)`),
       );
     }
-    return String(n);
+    return String(value);
   }
   if (kind === "string") return JSON.stringify(value);
   if (Array.isArray(value)) {
@@ -60,6 +68,38 @@ export function serialize(value: unknown): Uint8Array {
 }
 
 /**
+ * Validate that `value` lies in the canonical serializable value domain:
+ * `null`, booleans, strings, canonical integers, and arrays/plain objects of
+ * those, recursively.
+ *
+ * `canonicalize` *is* the definition of that domain, so this asks it directly
+ * rather than reimplementing the walk — a parallel validator would be free to
+ * drift from the encoder, which is exactly the mismatch this closes. Used by
+ * `parseDecisionRecord` on the opaque payloads it does not otherwise inspect,
+ * so that a record which parses is guaranteed to serialize (FR-008, FR-012).
+ */
+export function requireCanonicalValue<T>(field: string, value: unknown): Result<T> {
+  try {
+    canonicalize(value, field);
+  } catch (error) {
+    if (error instanceof SerializationError) return err(error.schemaError);
+    throw error;
+  }
+  return ok(value as T);
+}
+
+/** An opaque payload map: a plain object whose every nested value is canonical. */
+export function requireCanonicalRecord(
+  field: string,
+  value: unknown,
+): Result<Readonly<Record<string, unknown>>> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return err(schemaError(field, "wrong-kind", `${field} must be an object`));
+  }
+  return requireCanonicalValue<Readonly<Record<string, unknown>>>(field, value);
+}
+
+/**
  * Parse bytes produced by `serialize`. Rejects input whose top-level
  * `schemaVersion` differs from `SCHEMA_VERSION` (FR-007, SC-004), and
  * rejects input that isn't valid JSON.
@@ -72,17 +112,17 @@ export function deserialize<T = unknown>(bytes: Uint8Array): Result<T> {
     return err(schemaError("$", "wrong-kind", "input is not valid JSON"));
   }
 
-  if (isRecord(parsed) && "schemaVersion" in parsed) {
-    const schemaVersion = parsed["schemaVersion"];
-    if (typeof schemaVersion === "number" && schemaVersion !== SCHEMA_VERSION) {
-      return err(
-        schemaError(
-          "schemaVersion",
-          "version-mismatch",
-          `expected schemaVersion ${SCHEMA_VERSION}, got ${schemaVersion}`,
-        ),
-      );
-    }
+  // A present `schemaVersion` must equal `SCHEMA_VERSION` — routed through the
+  // shared check so a malformed or foreign tag (`"2"`, `null`, `1.5`) is a
+  // rejection too. Comparing only mismatching *numbers* would let a version
+  // that cannot possibly equal the integer constant through unchecked.
+  if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed) && "schemaVersion" in parsed) {
+    const schemaVersion = requireDeclaredConstant(
+      "schemaVersion",
+      (parsed as Record<string, unknown>)["schemaVersion"],
+      SCHEMA_VERSION,
+    );
+    if (!schemaVersion.ok) return err(schemaVersion.error);
   }
 
   return ok(parsed as T);

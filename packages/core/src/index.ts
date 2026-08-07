@@ -26,6 +26,7 @@ export {
   asTick,
   asMillidegPerTick,
   fromBaseUnit,
+  quantizeToBaseUnit,
   toBaseUnit,
 } from "./units.ts";
 
@@ -79,7 +80,13 @@ export {
   parseTrace,
 } from "./trace.ts";
 
-export { SerializationError, deserialize, serialize } from "./serialize.ts";
+export {
+  SerializationError,
+  deserialize,
+  requireCanonicalRecord,
+  requireCanonicalValue,
+  serialize,
+} from "./serialize.ts";
 
 // --- User Story 3: units (conversions above) + seeds --------------------------
 export { type Seed, deriveSubSeed, parseSeed } from "./seed.ts";

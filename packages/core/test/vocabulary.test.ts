@@ -19,6 +19,7 @@ import {
   divert,
   goAround,
   hold,
+  parseCommand,
   parseWorldSnapshot,
   type Command,
   type WorldSnapshot,
@@ -110,5 +111,48 @@ describe("command vocabulary (US1)", () => {
       expect(command.params).not.toHaveProperty("position");
       expect(command.params).not.toHaveProperty("coordinates");
     }
+  });
+});
+
+// Constructing vocabulary-only commands is not enough: a command arriving as
+// data must not be able to smuggle a field past the boundary. Dropping an
+// unknown field would turn malformed controller output into an apparently
+// valid command while hiding unsupported intent (spec.md Edge Cases, FR-004).
+describe("unknown command fields are rejected, not dropped (FR-004, FR-011)", () => {
+  const wellFormed = {
+    kind: "hold",
+    target: "AC1",
+    params: {},
+    observedAt: 0,
+    effectiveAt: 1,
+  } as const;
+
+  it("accepts the well-formed baseline", () => {
+    expect(parseCommand(wellFormed).ok).toBe(true);
+  });
+
+  it.each([
+    ["position", { x: 1, y: 2, z: 3 }],
+    ["coordinates", [1, 2, 3]],
+    ["velocity", 100],
+    ["priority", "high"],
+  ])("rejects a command carrying an unknown %s field", (field, value) => {
+    const result = parseCommand({ ...wellFormed, [field]: value });
+    expect(result.ok).toBe(false);
+    expect(result.ok === false && result.error.reason).toBe("unknown-field");
+  });
+
+  it("rejects an unknown field inside params rather than silently dropping it", () => {
+    const result = parseCommand({
+      ...wellFormed,
+      kind: "assignHeading",
+      params: { heading: 90_000, altitude: 4_000_000 },
+    });
+    expect(result.ok).toBe(false);
+  });
+
+  it("still rejects params missing the field its kind requires", () => {
+    const result = parseCommand({ ...wellFormed, kind: "assignHeading", params: {} });
+    expect(result.ok).toBe(false);
   });
 });

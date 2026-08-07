@@ -61,6 +61,7 @@ export function buildSampleRecord(): DecisionRecord {
   }
 
   return {
+    schemaVersion: SCHEMA_VERSION,
     index: 0,
     observed,
     messages: [{ role: "assistant", content: "clearing AC1 to land" }],

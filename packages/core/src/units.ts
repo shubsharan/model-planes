@@ -96,23 +96,73 @@ const UNIT_TABLE: Readonly<Record<string, UnitDef>> = {
 };
 
 /**
- * Convert a quantity in `quantity.unit` to its canonical integer base unit.
- * Rejects a missing unit, an unrecognized/ambiguous unit, or a conversion
- * that would not be exact (FR-009).
+ * The conversion as an exact rational `numerator / denominator`.
+ *
+ * Scaling in binary floating point manufactures residue that has nothing to do
+ * with the quantity: `1.001 * 1000` is `1000.9999999999999`, so a value that is
+ * exactly 1001 mm would read as inexact. Instead we take the shortest decimal
+ * that round-trips the input — which is what `String` on a double yields — and
+ * work from its integer mantissa, so every step below is integer arithmetic.
  */
-export function toBaseUnit(quantity: Quantity): Result<number> {
-  if (quantity.unit === "" || quantity.unit === undefined || quantity.unit === null) {
-    return err(schemaError("unit", "missing", "quantity.unit is required — there is no implicit default unit"));
-  }
-  const def = UNIT_TABLE[quantity.unit];
-  if (def === undefined) {
-    return err(schemaError("unit", "wrong-kind", `unrecognized or ambiguous unit "${quantity.unit}"`));
-  }
-  if (!Number.isFinite(quantity.value)) {
+function asExactRatio(value: number, def: UnitDef): Result<{ numerator: number; denominator: number }> {
+  if (!Number.isFinite(value)) {
     return err(schemaError("value", "not-integer", "quantity.value must be a finite number"));
   }
-  const converted = (quantity.value * def.multiplyBy) / def.divideBy;
-  if (!Number.isInteger(converted)) {
+
+  // `value` is exactly `digits x 10^(exponent - fractionPart.length)`, where
+  // `digits` is the significand with its decimal point removed. `String` emits
+  // e-notation for very large and very small magnitudes, so `1e-7` and `1.001`
+  // both land here; `integerPart` carries any minus sign.
+  const [significand = "", exponentText] = String(value).split("e");
+  const [integerPart = "", fractionPart = ""] = significand.split(".");
+  const exponent = exponentText === undefined ? 0 : Number(exponentText);
+
+  // Choose `decimals` so that `value === mantissa / 10^decimals` with an
+  // integral mantissa: the shift below is non-negative exactly when
+  // `decimals >= fractionPart.length - exponent`.
+  const decimals = Math.max(0, fractionPart.length - exponent);
+  const mantissa = Number(`${integerPart}${fractionPart}e${exponent - fractionPart.length + decimals}`);
+  const numerator = mantissa * def.multiplyBy;
+  const denominator = 10 ** decimals * def.divideBy;
+
+  // ADR 0001 relies on every base-unit magnitude staying inside the exact
+  // integer range; past it, integer arithmetic silently stops being exact, so
+  // reject rather than return a value we cannot stand behind.
+  if (!Number.isSafeInteger(mantissa) || !Number.isSafeInteger(numerator) || !Number.isSafeInteger(denominator)) {
+    return err(
+      schemaError("value", "out-of-range", `converting ${value} exceeds the exact integer range (ADR 0001)`),
+    );
+  }
+  return ok({ numerator, denominator });
+}
+
+function resolveUnit(unit: string): Result<UnitDef> {
+  if (unit === "" || unit === undefined || unit === null) {
+    return err(schemaError("unit", "missing", "quantity.unit is required — there is no implicit default unit"));
+  }
+  const def = UNIT_TABLE[unit];
+  if (def === undefined) {
+    return err(schemaError("unit", "wrong-kind", `unrecognized or ambiguous unit "${unit}"`));
+  }
+  return ok(def);
+}
+
+/**
+ * Convert a quantity in `quantity.unit` to its canonical integer base unit,
+ * exactly. Rejects a missing unit, an unrecognized/ambiguous unit, or a
+ * conversion that would lose precision — e.g. 150 ms against a 100 ms tick
+ * (FR-009, SC-006). Use `quantizeToBaseUnit` where the ADR's declared boundary
+ * rounding is wanted instead of rejection.
+ */
+export function toBaseUnit(quantity: Quantity): Result<number> {
+  const def = resolveUnit(quantity.unit);
+  if (!def.ok) return err(def.error);
+
+  const ratio = asExactRatio(quantity.value, def.value);
+  if (!ratio.ok) return err(ratio.error);
+  const { numerator, denominator } = ratio.value;
+
+  if (numerator % denominator !== 0) {
     return err(
       schemaError(
         "value",
@@ -121,7 +171,51 @@ export function toBaseUnit(quantity: Quantity): Result<number> {
       ),
     );
   }
-  return ok(converted);
+  return ok(numerator / denominator);
+}
+
+/**
+ * Convert a quantity to its canonical base unit, quantizing a sub-unit
+ * remainder round-half-to-even — the declared, versioned boundary rounding
+ * required by ADR 0001 for any value leaving transient floating-point
+ * computation (the simulator's dynamics) to enter state, a command, or the
+ * trace. Half-to-even is what makes the step reproducible across platforms and
+ * unbiased over many roundings; changing it is a schema-version change.
+ *
+ * Unlike `toBaseUnit` this never rejects for inexactness — quantization is the
+ * point. Unit and range rejections are unchanged.
+ */
+export function quantizeToBaseUnit(quantity: Quantity): Result<number> {
+  const def = resolveUnit(quantity.unit);
+  if (!def.ok) return err(def.error);
+
+  const ratio = asExactRatio(quantity.value, def.value);
+  if (!ratio.ok) return err(ratio.error);
+  const { numerator, denominator } = ratio.value;
+
+  // Quantize the magnitude, then reapply the sign: half-to-even is symmetric
+  // about zero, and working on a non-negative pair keeps the floor division
+  // and the parity tie-break free of sign edge cases.
+  const negative = numerator < 0;
+  const magnitude = Math.abs(numerator);
+  let quotient = Math.floor(magnitude / denominator);
+  let remainder = magnitude - quotient * denominator;
+  // Float division can land a hair either side of the true quotient; correct
+  // it against the exact remainder so the parity tie-break below is reliable.
+  if (remainder < 0) {
+    quotient -= 1;
+    remainder += denominator;
+  } else if (remainder >= denominator) {
+    quotient += 1;
+    remainder -= denominator;
+  }
+
+  const doubled = remainder * 2;
+  const rounded =
+    doubled > denominator || (doubled === denominator && quotient % 2 !== 0) ? quotient + 1 : quotient;
+
+  // `-1 * 0` is `-0`, which is not a canonical integer (ADR 0001).
+  return ok(negative && rounded !== 0 ? -rounded : rounded);
 }
 
 /**

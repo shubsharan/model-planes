@@ -8,8 +8,10 @@ import {
   type Result,
   err,
   ok,
+  requireDeclaredConstant,
   requireInteger,
   requireRange,
+  requireRecord,
   requireUniqueIds,
   schemaError,
 } from "./validate.ts";
@@ -18,10 +20,6 @@ import { SCHEMA_VERSION } from "./validate.ts";
 
 /** Half-width of the bounded terminal airspace, in mm (ADR 0001: ~100 km radius). */
 export const AIRSPACE_BOUND_MM = 100_000_000;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 // --- AircraftClass -----------------------------------------------------------
 
@@ -45,14 +43,15 @@ export interface Vec3 {
 export type Position = Vec3;
 
 export function parseVec3(field: string, input: unknown): Result<Vec3> {
-  if (!isRecord(input)) {
-    return err(schemaError(field, "wrong-kind", `${field} must be an object`));
-  }
-  const x = requireInteger(`${field}.x`, input["x"]);
+  const vec = requireRecord(field, input, ["x", "y", "z"]);
+  if (!vec.ok) return err(vec.error);
+  const record = vec.value;
+
+  const x = requireInteger(`${field}.x`, record["x"]);
   if (!x.ok) return err(x.error);
-  const y = requireInteger(`${field}.y`, input["y"]);
+  const y = requireInteger(`${field}.y`, record["y"]);
   if (!y.ok) return err(y.error);
-  const z = requireInteger(`${field}.z`, input["z"]);
+  const z = requireInteger(`${field}.z`, record["z"]);
   if (!z.ok) return err(z.error);
 
   const xr = requireRange(`${field}.x`, x.value, -AIRSPACE_BOUND_MM, AIRSPACE_BOUND_MM);
@@ -83,18 +82,25 @@ export function parseAircraftPerformanceLimits(
   field: string,
   input: unknown,
 ): Result<AircraftPerformanceLimits> {
-  if (!isRecord(input)) {
-    return err(schemaError(field, "wrong-kind", `${field} must be an object`));
-  }
-  const minSpeed = requireInteger(`${field}.minSpeed`, input["minSpeed"]);
+  const limits = requireRecord(field, input, [
+    "minSpeed",
+    "maxSpeed",
+    "maxClimbRate",
+    "maxDescentRate",
+    "maxTurnRate",
+  ]);
+  if (!limits.ok) return err(limits.error);
+  const record = limits.value;
+
+  const minSpeed = requireInteger(`${field}.minSpeed`, record["minSpeed"]);
   if (!minSpeed.ok) return err(minSpeed.error);
-  const maxSpeed = requireInteger(`${field}.maxSpeed`, input["maxSpeed"]);
+  const maxSpeed = requireInteger(`${field}.maxSpeed`, record["maxSpeed"]);
   if (!maxSpeed.ok) return err(maxSpeed.error);
-  const maxClimbRate = requireInteger(`${field}.maxClimbRate`, input["maxClimbRate"]);
+  const maxClimbRate = requireInteger(`${field}.maxClimbRate`, record["maxClimbRate"]);
   if (!maxClimbRate.ok) return err(maxClimbRate.error);
-  const maxDescentRate = requireInteger(`${field}.maxDescentRate`, input["maxDescentRate"]);
+  const maxDescentRate = requireInteger(`${field}.maxDescentRate`, record["maxDescentRate"]);
   if (!maxDescentRate.ok) return err(maxDescentRate.error);
-  const maxTurnRate = requireInteger(`${field}.maxTurnRate`, input["maxTurnRate"]);
+  const maxTurnRate = requireInteger(`${field}.maxTurnRate`, record["maxTurnRate"]);
   if (!maxTurnRate.ok) return err(maxTurnRate.error);
 
   if (minSpeed.value < 0 || maxClimbRate.value < 0 || maxDescentRate.value < 0 || maxTurnRate.value < 0) {
@@ -126,12 +132,13 @@ export function parseSeparationRequirement(
   field: string,
   input: unknown,
 ): Result<SeparationRequirement> {
-  if (!isRecord(input)) {
-    return err(schemaError(field, "wrong-kind", `${field} must be an object`));
-  }
-  const horizontal = requireInteger(`${field}.horizontal`, input["horizontal"]);
+  const separation = requireRecord(field, input, ["horizontal", "vertical"]);
+  if (!separation.ok) return err(separation.error);
+  const record = separation.value;
+
+  const horizontal = requireInteger(`${field}.horizontal`, record["horizontal"]);
   if (!horizontal.ok) return err(horizontal.error);
-  const vertical = requireInteger(`${field}.vertical`, input["vertical"]);
+  const vertical = requireInteger(`${field}.vertical`, record["vertical"]);
   if (!vertical.ok) return err(vertical.error);
   if (horizontal.value < 0 || vertical.value < 0) {
     return err(schemaError(field, "out-of-range", `${field} must be >= 0`));
@@ -153,29 +160,38 @@ export interface AircraftState {
 }
 
 export function parseAircraftState(field: string, input: unknown): Result<AircraftState> {
-  if (!isRecord(input)) {
-    return err(schemaError(field, "wrong-kind", `${field} must be an object`));
-  }
+  const aircraft = requireRecord(field, input, [
+    "id",
+    "position",
+    "heading",
+    "speed",
+    "class",
+    "limits",
+    "separationRequirement",
+    "fuelOrWindowRemaining",
+  ]);
+  if (!aircraft.ok) return err(aircraft.error);
+  const record = aircraft.value;
 
-  const id = input["id"];
+  const id = record["id"];
   if (typeof id !== "string" || id.length === 0) {
     return err(schemaError(`${field}.id`, "wrong-kind", `${field}.id must be a non-empty string`));
   }
 
-  const position = parseVec3(`${field}.position`, input["position"]);
+  const position = parseVec3(`${field}.position`, record["position"]);
   if (!position.ok) return err(position.error);
 
-  const heading = requireInteger(`${field}.heading`, input["heading"]);
+  const heading = requireInteger(`${field}.heading`, record["heading"]);
   if (!heading.ok) return err(heading.error);
   const headingRange = requireRange(`${field}.heading`, heading.value, 0, 360_000, {
     maxExclusive: true,
   });
   if (!headingRange.ok) return err(headingRange.error);
 
-  const speed = requireInteger(`${field}.speed`, input["speed"]);
+  const speed = requireInteger(`${field}.speed`, record["speed"]);
   if (!speed.ok) return err(speed.error);
 
-  const aircraftClass = input["class"];
+  const aircraftClass = record["class"];
   if (!isAircraftClass(aircraftClass)) {
     return err(
       schemaError(
@@ -186,7 +202,7 @@ export function parseAircraftState(field: string, input: unknown): Result<Aircra
     );
   }
 
-  const limits = parseAircraftPerformanceLimits(`${field}.limits`, input["limits"]);
+  const limits = parseAircraftPerformanceLimits(`${field}.limits`, record["limits"]);
   if (!limits.ok) return err(limits.error);
 
   if (speed.value < limits.value.minSpeed || speed.value > limits.value.maxSpeed) {
@@ -197,13 +213,13 @@ export function parseAircraftState(field: string, input: unknown): Result<Aircra
 
   const separationRequirement = parseSeparationRequirement(
     `${field}.separationRequirement`,
-    input["separationRequirement"],
+    record["separationRequirement"],
   );
   if (!separationRequirement.ok) return err(separationRequirement.error);
 
   const fuelOrWindowRemaining = requireInteger(
     `${field}.fuelOrWindowRemaining`,
-    input["fuelOrWindowRemaining"],
+    record["fuelOrWindowRemaining"],
   );
   if (!fuelOrWindowRemaining.ok) return err(fuelOrWindowRemaining.error);
   if (fuelOrWindowRemaining.value < 0) {
@@ -239,18 +255,18 @@ export interface RunwayState {
 }
 
 export function parseRunwayState(field: string, input: unknown): Result<RunwayState> {
-  if (!isRecord(input)) {
-    return err(schemaError(field, "wrong-kind", `${field} must be an object`));
-  }
+  const runway = requireRecord(field, input, ["id", "threshold1", "threshold2", "width", "closed"]);
+  if (!runway.ok) return err(runway.error);
+  const record = runway.value;
 
-  const id = input["id"];
+  const id = record["id"];
   if (typeof id !== "string" || id.length === 0) {
     return err(schemaError(`${field}.id`, "wrong-kind", `${field}.id must be a non-empty string`));
   }
 
-  const threshold1 = parseVec3(`${field}.threshold1`, input["threshold1"]);
+  const threshold1 = parseVec3(`${field}.threshold1`, record["threshold1"]);
   if (!threshold1.ok) return err(threshold1.error);
-  const threshold2 = parseVec3(`${field}.threshold2`, input["threshold2"]);
+  const threshold2 = parseVec3(`${field}.threshold2`, record["threshold2"]);
   if (!threshold2.ok) return err(threshold2.error);
   if (vec3Equal(threshold1.value, threshold2.value)) {
     return err(
@@ -258,13 +274,13 @@ export function parseRunwayState(field: string, input: unknown): Result<RunwaySt
     );
   }
 
-  const width = requireInteger(`${field}.width`, input["width"]);
+  const width = requireInteger(`${field}.width`, record["width"]);
   if (!width.ok) return err(width.error);
   if (width.value <= 0) {
     return err(schemaError(`${field}.width`, "out-of-range", `${field}.width must be > 0`));
   }
 
-  const closed = input["closed"];
+  const closed = record["closed"];
   if (typeof closed !== "boolean") {
     return err(schemaError(`${field}.closed`, "wrong-kind", `${field}.closed must be a boolean`));
   }
@@ -288,23 +304,23 @@ export interface WorldSnapshot {
 }
 
 export function parseWorldSnapshot(input: unknown): Result<WorldSnapshot> {
-  if (!isRecord(input)) {
-    return err(schemaError("WorldSnapshot", "wrong-kind", "WorldSnapshot must be an object"));
-  }
+  const snapshot = requireRecord("WorldSnapshot", input, [
+    "schemaVersion",
+    "simTime",
+    "aircraft",
+    "runways",
+  ]);
+  if (!snapshot.ok) return err(snapshot.error);
+  const record = snapshot.value;
 
-  const schemaVersion = requireInteger("WorldSnapshot.schemaVersion", input["schemaVersion"]);
+  const schemaVersion = requireDeclaredConstant(
+    "WorldSnapshot.schemaVersion",
+    record["schemaVersion"],
+    SCHEMA_VERSION,
+  );
   if (!schemaVersion.ok) return err(schemaVersion.error);
-  if (schemaVersion.value !== SCHEMA_VERSION) {
-    return err(
-      schemaError(
-        "WorldSnapshot.schemaVersion",
-        "version-mismatch",
-        `expected schemaVersion ${SCHEMA_VERSION}, got ${schemaVersion.value}`,
-      ),
-    );
-  }
 
-  const simTime = requireInteger("WorldSnapshot.simTime", input["simTime"]);
+  const simTime = requireInteger("WorldSnapshot.simTime", record["simTime"]);
   if (!simTime.ok) return err(simTime.error);
   if (simTime.value < 0) {
     return err(
@@ -312,7 +328,7 @@ export function parseWorldSnapshot(input: unknown): Result<WorldSnapshot> {
     );
   }
 
-  const rawAircraft = input["aircraft"];
+  const rawAircraft = record["aircraft"];
   if (!Array.isArray(rawAircraft)) {
     return err(
       schemaError("WorldSnapshot.aircraft", "wrong-kind", "WorldSnapshot.aircraft must be an array"),
@@ -327,7 +343,7 @@ export function parseWorldSnapshot(input: unknown): Result<WorldSnapshot> {
   const uniqueAircraft = requireUniqueIds("WorldSnapshot.aircraft", aircraft, (a) => a.id);
   if (!uniqueAircraft.ok) return err(uniqueAircraft.error);
 
-  const rawRunways = input["runways"];
+  const rawRunways = record["runways"];
   if (!Array.isArray(rawRunways)) {
     return err(
       schemaError("WorldSnapshot.runways", "wrong-kind", "WorldSnapshot.runways must be an array"),

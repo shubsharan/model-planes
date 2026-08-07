@@ -70,8 +70,13 @@ decision, why it was chosen, and what was rejected.
 - **Alternatives considered**:
   - *Semantic version string* — more expressive but invites lenient "compatible-range"
     reads; a strict integer-equality check is safer for exact replay.
-  - *Per-entity versions* — more granular but more bookkeeping than the current surface
-    needs; one document-level version is sufficient.
+  - *Per-entity version numbers* — an independent version line per entity (a
+    `DecisionRecord` at v3 inside a `Trace` at v1) is more granular but more bookkeeping
+    than the current surface needs. Note this is not the same as *stamping* the single
+    global version on each entity, which the Decision above does require: because every
+    reader compares against the same constant, a nested tag and its enclosing document
+    agree by construction, and the repetition costs nothing to maintain while keeping a
+    record self-describing once lifted out of its trace.
 
 ## R5 — Observed-vs-applied time and raw→intervention→applied
 

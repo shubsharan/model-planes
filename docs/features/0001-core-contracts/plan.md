@@ -131,7 +131,7 @@ No constitution violations — nothing to justify.
 
 **Impact**: Project
 
-- [ADR 0001 — Deterministic State Representation](../../adrs/0001-deterministic-state-representation.md) (Proposed): fixed-point integer base units + canonical deterministic serialization for cross-platform byte-identical traces (FR-008, SC-002). Governs every package that stores or compares state/records; must be **Accepted** before this feature moves from Pending to Active/implementation.
+- [ADR 0001 — Deterministic State Representation](../../adrs/0001-deterministic-state-representation.md) (Accepted): fixed-point integer base units + canonical deterministic serialization for cross-platform byte-identical traces (FR-008, SC-002). Governs every package that stores or compares state/records.
 
 Follows the canonical policy in [docs/adrs/README.md](../../adrs/README.md). The same ADR
 is linked from [spec.md](spec.md).

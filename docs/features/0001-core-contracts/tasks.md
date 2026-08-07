@@ -134,6 +134,22 @@ description: "Task list for feature: Core Contracts"
 
 ---
 
+## Phase 7: Review Remediation (PR #1)
+
+**Purpose**: Close the review findings on [PR #1](https://github.com/shubsharan/model-planes/pull/1). Six of the seven were symptoms of one gap — `core` had no single definition of a valid value at a boundary, so each parser and the serializer re-derived it and disagreed. The remedy is a shared boundary vocabulary in `validate.ts` that every entity derives from, not per-site guards.
+
+- [X] T036 Add the shared boundary vocabulary to `packages/core/src/validate.ts`: `unknown-field` reason, `requireRecord` (record gate + exact-key check), `requireDeclaredConstant`, and `-0` exclusion in `isInteger` (FR-011, ADR 0001)
+- [X] T037 Replace every ad-hoc `isRecord` gate in `state.ts`/`command.ts`/`trace.ts` with `requireRecord`, so an unknown field is an explicit error at every entity rather than silently dropped — including a coordinate or motion override on a `Command` (spec Edge Cases, FR-004, FR-011)
+- [X] T038 Stamp `schemaVersion` on `DecisionRecord` and route all four version checks (`WorldSnapshot`, `DecisionRecord`, `Trace`, `deserialize`) through `requireDeclaredConstant`, which also rejects a non-integer version (FR-007, SC-004)
+- [X] T039 Require `Trace.msPerTick` to equal `MS_PER_TICK` rather than merely be positive — a differing resolution silently reinterprets every recorded timestamp (ADR 0001)
+- [X] T040 Define the canonical serializable value domain once in `serialize.ts` (`requireCanonicalValue`/`requireCanonicalRecord`, backed by the encoder itself) and validate `messages`/`margins`/`meta` against it, so a record that parses is guaranteed to serialize (FR-008, FR-012)
+- [X] T041 Rewrite unit conversion on exact integer arithmetic over the input's decimal mantissa, removing the binary floating-point residue that rejected exactly-representable quantities; add `quantizeToBaseUnit` implementing ADR 0001's round-half-to-even boundary rounding (FR-009)
+- [X] T042 Extend the Vitest suites to cover every finding, including the `1.001 m` regression and the parse-implies-serialize guarantee
+- [X] T043 Reconcile the governing artifacts with the code: `DecisionRecord.schemaVersion` in `trace-schema.md`/`data-model.md`, the `unknown-field` reason and `quantizeToBaseUnit` in `public-api.md`, the R4 clarification in `research.md`, FR-009's quantization clause, and the stale ADR "(Proposed)" labels in `spec.md`/`plan.md` (AGENTS.md)
+- [X] T044 Verification gate — run the full Vitest suite; all specs pass
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

@@ -96,6 +96,8 @@ ambiguous unit is rejected (FR-009, SC-006).
 
 ### DecisionRecord
 
+- `schemaVersion`: integer (FR-007, SC-004). Stamped here as well as on the enclosing
+  Trace so a record persisted or exchanged on its own is still self-describing.
 - `observed`: WorldSnapshot given to the controller.
 - `messages`: controller messages / tool use (opaque, ordered).
 - `proposed`: raw Command as the controller emitted it (FR-005, FR-006).
@@ -105,15 +107,21 @@ ambiguous unit is rejected (FR-009, SC-006).
 - `margins`: safety margins and scoring events at this decision.
 - `meta`: provider, model, prompt, budget, latency metadata.
 - Validation: `proposed`, `intervention`, `applied` independently retrievable;
-  required fields present (FR-005, FR-011, SC-003).
+  required fields present; version matches; unknown fields rejected; the opaque
+  payloads (`messages`, `margins`, `meta`) lie in the canonical serializable value
+  domain, so a validated record is guaranteed to serialize (FR-005, FR-008, FR-011,
+  SC-003).
 
 ### Trace
 
 - `schemaVersion`: integer (FR-007, SC-004).
 - `seed`: Seed used for the run.
+- `msPerTick`: the declared tick resolution; MUST equal `MS_PER_TICK` — a differing
+  value means the data was written under a different schema (ADR 0001).
 - `records`: ordered list of DecisionRecord — sufficient for exact replay (EDC-001,
   EDC-003).
-- Validation: version present; records ordered by `simTime`/index.
+- Validation: version present; `msPerTick` matches the declared resolution; records
+  ordered by `simTime`/index.
 
 ### Seed
 

@@ -5,11 +5,7 @@
 // the observation timestamp it was based on and the effective time it
 // applies (FR-003).
 import { type Millideg, type Mm, type MmPerSec, type Tick, asTick } from "./units.ts";
-import { type Result, err, ok, requireInteger, schemaError } from "./validate.ts";
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
+import { type Result, err, ok, requireInteger, requireRecord, schemaError } from "./validate.ts";
 
 /** Kind-specific params for each command in the vocabulary (FR-002). */
 interface CommandParamsMap {
@@ -126,19 +122,28 @@ function isCommandKind(value: unknown): value is CommandKind {
   return typeof value === "string" && (COMMAND_KINDS as readonly string[]).includes(value);
 }
 
+/** The exact field set each kind's `params` may carry — no kind has more. */
+const PARAM_KEYS = {
+  assignHeading: ["heading"],
+  assignAltitude: ["altitude"],
+  assignSpeed: ["speed"],
+  hold: [],
+  assignRunway: ["runwayId"],
+  clearApproach: [],
+  clearLand: [],
+  goAround: [],
+  divert: [],
+} as const satisfies Record<CommandKind, readonly string[]>;
+
 /** Validates `params` matches exactly the field set `kind` requires — no extra fields. */
 function parseParamsForKind(kind: CommandKind, field: string, input: unknown): Result<CommandParamsMap[CommandKind]> {
-  if (!isRecord(input)) {
-    return err(schemaError(field, "wrong-kind", `${field} must be an object`));
-  }
-  const keys = Object.keys(input);
+  const params = requireRecord(field, input, PARAM_KEYS[kind]);
+  if (!params.ok) return err(params.error);
+  const record = params.value;
 
   switch (kind) {
     case "assignHeading": {
-      if (keys.length !== 1 || !("heading" in input)) {
-        return err(schemaError(field, "wrong-kind", `${field} must be { heading }`));
-      }
-      const heading = requireInteger(`${field}.heading`, input["heading"]);
+      const heading = requireInteger(`${field}.heading`, record["heading"]);
       if (!heading.ok) return err(heading.error);
       if (heading.value < 0 || heading.value >= 360_000) {
         return err(schemaError(`${field}.heading`, "out-of-range", `${field}.heading must be in [0, 360000)`));
@@ -146,10 +151,7 @@ function parseParamsForKind(kind: CommandKind, field: string, input: unknown): R
       return ok({ heading: heading.value as Millideg });
     }
     case "assignAltitude": {
-      if (keys.length !== 1 || !("altitude" in input)) {
-        return err(schemaError(field, "wrong-kind", `${field} must be { altitude }`));
-      }
-      const altitude = requireInteger(`${field}.altitude`, input["altitude"]);
+      const altitude = requireInteger(`${field}.altitude`, record["altitude"]);
       if (!altitude.ok) return err(altitude.error);
       if (altitude.value < 0) {
         return err(schemaError(`${field}.altitude`, "out-of-range", `${field}.altitude must be >= 0`));
@@ -157,10 +159,7 @@ function parseParamsForKind(kind: CommandKind, field: string, input: unknown): R
       return ok({ altitude: altitude.value as Mm });
     }
     case "assignSpeed": {
-      if (keys.length !== 1 || !("speed" in input)) {
-        return err(schemaError(field, "wrong-kind", `${field} must be { speed }`));
-      }
-      const speed = requireInteger(`${field}.speed`, input["speed"]);
+      const speed = requireInteger(`${field}.speed`, record["speed"]);
       if (!speed.ok) return err(speed.error);
       if (speed.value < 0) {
         return err(schemaError(`${field}.speed`, "out-of-range", `${field}.speed must be >= 0`));
@@ -168,10 +167,7 @@ function parseParamsForKind(kind: CommandKind, field: string, input: unknown): R
       return ok({ speed: speed.value as MmPerSec });
     }
     case "assignRunway": {
-      if (keys.length !== 1 || !("runwayId" in input)) {
-        return err(schemaError(field, "wrong-kind", `${field} must be { runwayId }`));
-      }
-      const runwayId = input["runwayId"];
+      const runwayId = record["runwayId"];
       if (typeof runwayId !== "string" || runwayId.length === 0) {
         return err(schemaError(`${field}.runwayId`, "wrong-kind", `${field}.runwayId must be a non-empty string`));
       }
@@ -181,40 +177,43 @@ function parseParamsForKind(kind: CommandKind, field: string, input: unknown): R
     case "clearApproach":
     case "clearLand":
     case "goAround":
-    case "divert": {
-      if (keys.length !== 0) {
-        return err(schemaError(field, "wrong-kind", `${field} must be an empty object for kind "${kind}"`));
-      }
+    case "divert":
       return ok(EMPTY_PARAMS);
-    }
   }
 }
 
-/** Validates a constructed value conforms to the Command schema (FR-011). */
-export function parseCommand(input: unknown): Result<Command> {
-  if (!isRecord(input)) {
-    return err(schemaError("Command", "wrong-kind", "Command must be an object"));
-  }
+const COMMAND_KEYS = ["kind", "target", "params", "observedAt", "effectiveAt"] as const;
 
-  const kind = input["kind"];
+/**
+ * Validates a constructed value conforms to the Command schema (FR-011). An
+ * unknown top-level field is rejected rather than dropped: silently ignoring
+ * one would let a coordinate or motion override ride along and read back as a
+ * valid vocabulary command, which is precisely what FR-004 forbids.
+ */
+export function parseCommand(input: unknown): Result<Command> {
+  const command = requireRecord("Command", input, COMMAND_KEYS);
+  if (!command.ok) return err(command.error);
+  const record = command.value;
+
+  const kind = record["kind"];
   if (!isCommandKind(kind)) {
     return err(
       schemaError("Command.kind", "wrong-kind", `Command.kind must be one of ${COMMAND_KINDS.join(", ")}`),
     );
   }
 
-  const target = input["target"];
+  const target = record["target"];
   if (typeof target !== "string" || target.length === 0) {
     return err(schemaError("Command.target", "wrong-kind", "Command.target must be a non-empty string"));
   }
 
-  const params = parseParamsForKind(kind, "Command.params", input["params"]);
+  const params = parseParamsForKind(kind, "Command.params", record["params"]);
   if (!params.ok) return err(params.error);
 
-  const observedAt = requireInteger("Command.observedAt", input["observedAt"]);
+  const observedAt = requireInteger("Command.observedAt", record["observedAt"]);
   if (!observedAt.ok) return err(observedAt.error);
 
-  const effectiveAt = requireInteger("Command.effectiveAt", input["effectiveAt"]);
+  const effectiveAt = requireInteger("Command.effectiveAt", record["effectiveAt"]);
   if (!effectiveAt.ok) return err(effectiveAt.error);
 
   return ok(
