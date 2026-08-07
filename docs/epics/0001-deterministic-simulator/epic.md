@@ -73,7 +73,7 @@ to a byte-identical result.
      package imports and builds against.
    - **Depends on**: None
    - **Advances**: EDC-001, EDC-003
-2. **Aircraft plant and tick engine**
+2. **Aircraft World Engine**
    - **Outcome**: given state and commands, aircraft motion advances deterministically
      under explicit versioned rules within per-aircraft performance limits.
    - **Depends on**: Core contracts
@@ -82,13 +82,13 @@ to a byte-identical result.
    - **Outcome**: each runway transitions through its legal modes — approach, final,
      landing, occupancy, go-around, exit — under explicit rules, and illegal
      transitions are rejected.
-   - **Depends on**: Aircraft plant and tick engine
+   - **Depends on**: Aircraft World Engine
    - **Advances**: EDC-002
 4. **Separation checker**
    - **Outcome**: the simulator authoritatively measures pairwise horizontal and
      vertical separation and flags violations by aircraft-class rules, as measurement
      rather than avoidance.
-   - **Depends on**: Aircraft plant and tick engine
+   - **Depends on**: Aircraft World Engine
    - **Advances**: EDC-002
 5. **Seeded scenario generator**
    - **Outcome**: scenarios are generated deterministically from a seed with declared
@@ -99,7 +99,7 @@ to a byte-identical result.
    - **Outcome**: every run emits an immutable, versioned trace sufficient for exact
      replay, and a verifier confirms a replayed run reproduces the original trace
      identically.
-   - **Depends on**: Core contracts; Aircraft plant and tick engine; Runway state
+   - **Depends on**: Core contracts; Aircraft World Engine; Runway state
      machines; Separation checker; Seeded scenario generator
    - **Advances**: EDC-001, EDC-003
 
@@ -111,9 +111,26 @@ to a byte-identical result.
 - **[OPEN]** How much stochastic machinery (wind, response jitter) is scaffolded now
   versus deferred, given the seeded-process hooks must be declared even while unused —
   Resolve in Seeded scenario generator.
+- **[OPEN]** Do the six non-motion command kinds (`hold`, `assignRunway`,
+  `clearApproach`, `clearLand`, `goAround`, `divert`) earn their place in the
+  vocabulary? Given agents hold direct kinematic control of every aircraft, much of
+  what they express is derivable: a go-around is steering away, a hold is an orbit the
+  agent constructs, a divert is leaving the airspace, a runway assignment is visible in
+  the trajectory. Clearances also reintroduce exactly the authored-state divergence
+  Core contracts avoided — a "cleared to land" flag can disagree with an aircraft that
+  never lands, and needs expiry/revocation rules describing nothing physical. Their
+  remaining justification is as *measurement instruments* rather than control inputs:
+  the [proposal](../../proposal.md)'s commitment-pressure variable (freeze horizons,
+  runway-reassignment and landing-slot change costs) and its deferred-action outcomes
+  (omitted, premature, late, duplicated, superseded) require an observable declaration
+  of future intent, which pure kinematic control never produces. Deciding to drop them
+  would also narrow Core contracts' FR-002 and the proposal's stated action vocabulary.
+  — Aircraft World Engine excludes them from its control surface without
+  prejudging this; resolve before the roadmap's Phase 4 (robustness and deferred
+  control), and record as an ADR if the vocabulary itself changes.
 - **[RISK]** Over-detailed dynamics could consume the epic without improving
-  determinism — keep dynamics simplified but explicit. Address in Aircraft plant and
-  tick engine.
+  determinism — keep dynamics simplified but explicit. Address in Aircraft World
+  Engine.
 - **[RISK]** An unstable trace/record schema forces rework in every dependent package
   — version it early. Address in Core contracts.
 
@@ -122,5 +139,6 @@ to a byte-identical result.
 <!-- speckit:generated:epic-features START -->
 
 - [Core Contracts](../../features/0001-core-contracts/spec.md) — Active
+- [Aircraft World Engine](../../features/0002-aircraft-world-engine/spec.md) — Pending
 
 <!-- speckit:generated:epic-features END -->
