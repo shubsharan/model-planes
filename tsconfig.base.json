@@ -5,12 +5,10 @@
     "lib": ["esnext"],
     "module": "nodenext",
     "moduleResolution": "nodenext",
-    "types": [],
+    "types": ["node"],
 
-    "composite": true,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
     "incremental": true,
 
     "strict": true,

@@ -2,12 +2,11 @@
   "name": "@model-planes/cli",
   "version": "0.0.0",
   "private": true,
-  "type": "module",
   "bin": {
-    "model-planes": "./dist/index.js"
+    "model-planes": "./src/index.ts"
   },
+  "type": "module",
   "scripts": {
-    "build": "tsc -b",
     "check-types": "tsc --noEmit",
     "test": "echo \"@model-planes/cli: no tests yet\"",
     "dev": "echo \"@model-planes/cli: no dev entrypoint yet\""

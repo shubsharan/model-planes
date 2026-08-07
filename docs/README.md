@@ -3,15 +3,15 @@
 Each fact has one canonical home. Link to that home rather than copying it into
 another durable document.
 
-| Document | Owns | Does not own |
-| --- | --- | --- |
-| `docs/roadmap.md` | directional sequencing, decision gates, and epic status | APIs, schemas, or feature design |
-| `docs/architecture.md` | high-level package/workspace layout and the dependency graph | durable architecture decisions (ADRs) or feature design |
-| `docs/adrs/README.md` and ADRs | durable project architecture decisions and their lifecycle | feature-level design or API inventories |
-| `docs/features/NNNN-name/` | feature behavior, design decisions, data models, contracts, verification, and implementation tasks | project-wide direction or historical architecture rationale |
-| source and tests | executable current behavior and exact interfaces | intended product direction |
-| `docs/features/NNNN-name/` | feature behavior, design decisions, data models, contracts, verification, and implementation tasks | project-wide direction or historical architecture rationale |
-| source and tests | executable current behavior and exact interfaces | intended product direction |
+| Document                       | Owns                                                                                               | Does not own                                                |
+| ------------------------------ | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `docs/roadmap.md`              | directional sequencing, decision gates, and epic status                                            | APIs, schemas, or feature design                            |
+| `docs/architecture.md`         | high-level package/workspace layout and the dependency graph                                       | durable architecture decisions (ADRs) or feature design     |
+| `docs/adrs/README.md` and ADRs | durable project architecture decisions and their lifecycle                                         | feature-level design or API inventories                     |
+| `docs/features/NNNN-name/`     | feature behavior, design decisions, data models, contracts, verification, and implementation tasks | project-wide direction or historical architecture rationale |
+| source and tests               | executable current behavior and exact interfaces                                                   | intended product direction                                  |
+| `docs/features/NNNN-name/`     | feature behavior, design decisions, data models, contracts, verification, and implementation tasks | project-wide direction or historical architecture rationale |
+| source and tests               | executable current behavior and exact interfaces                                                   | intended product direction                                  |
 
 ## Update Protocol
 

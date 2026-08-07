@@ -1,10 +1,7 @@
 {
   "version": "0.8.8",
   "integration_state_schema": 1,
-  "installed_integrations": [
-    "codex",
-    "claude"
-  ],
+  "installed_integrations": ["codex", "claude"],
   "integration_settings": {
     "codex": {
       "script": "sh",

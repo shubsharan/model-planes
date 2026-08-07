@@ -35,6 +35,6 @@ belong in feature artifacts or the current architecture and taxonomy documents.
 
 <!-- speckit:generated:adr-index START -->
 
-_No ADRs yet._
+- [Deterministic State Representation](0001-deterministic-state-representation.md) — Accepted
 
 <!-- speckit:generated:adr-index END -->

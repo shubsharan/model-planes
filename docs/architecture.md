@@ -2,13 +2,12 @@
 
 Canonical map of the workspace. Per-package responsibility lives in each package's
 `README.md`; this file owns only the high-level layout and the dependency graph. It
-does not own durable architecture *decisions* — those are [ADRs](adrs/README.md).
+does not own durable architecture _decisions_ — those are [ADRs](adrs/README.md).
 
 The repository is a `pnpm` + `turbo` workspace: `packages/*`, wired by `pnpm-workspace.yaml`, `turbo.json`, and TypeScript project references
 (`tsconfig.base.json` + the root solution `tsconfig.json`).
 
 ## Packages
-
 
 | Package                                            | Responsibility                                                                                              | Depends on                        | Constitution |
 | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | --------------------------------- | ------------ |
@@ -18,9 +17,6 @@ The repository is a `pnpm` + `turbo` workspace: `packages/*`, wired by `pnpm-wor
 | `[controllers](../packages/controllers/README.md)` | Command proposers — modules: `baselines/`, `oracle/`, `agents/`                                             | core, sim                         | IV, VI       |
 | `[harness](../packages/harness/README.md)`         | Environment + evaluation — modules: `regimes/`, `latency/`, `safety/`, `scoring/`, `analysis/`, `trace-io/` | core, sim, scenarios, controllers | I, III, V    |
 | `[cli](../packages/cli/README.md)`                 | User-facing entrypoints                                                                                     | harness                           | —            |
-
-
-
 
 ## Dependency graph
 
@@ -39,8 +35,6 @@ earn it (a move + a manifest, not a refactor):
 - `harness/scoring/` (+ `analysis/`) → `@model-planes/scoring` — likely first split.
 - `harness/safety/` → `@model-planes/safety`.
 - `controllers/agents/` → `@model-planes/agents`.
-
-
 
 ## Status
 
