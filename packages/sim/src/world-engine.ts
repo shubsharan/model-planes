@@ -65,7 +65,17 @@ export type WorldEngineEvent =
       readonly dimension: TargetDimension;
     };
 
-/** The complete result of one `advanceTick`. */
+/**
+ * The complete result of one `advanceTick`.
+ *
+ * `applied`/`rejected`/`superseded` account for every command *resolved* this
+ * tick: submitted commands that were rejected outright, and any command —
+ * submitted now or queued earlier — whose `effectiveAt` is this tick. A
+ * legally admitted command with a future `effectiveAt` is not silently
+ * dropped; it is queued in `state.assignments.get(id).pending` and will
+ * appear in `applied` (or `superseded`, if displaced first) on the tick it
+ * actually resolves. Nothing about it is lost between now and then.
+ */
 export interface TickOutcome {
   readonly rulesetVersion: number;
   /** The next state; its `snapshot.simTime` is exactly one greater. */
@@ -227,6 +237,14 @@ function advanceAircraft(
       // Clamp rather than report an out-of-bounds position: the latter would not
       // even pass `parseWorldSnapshot`. The aircraft is flagged and frozen here;
       // what that *means* (divert, scoring) belongs to later features.
+      //
+      // Landing exactly ON the boundary (`clampedX === moved.x`) does not enter
+      // this branch, and that is deliberate, not an oversight: the boundary
+      // point itself is a valid in-bounds position (core's range check on
+      // position is inclusive), and research R8 / the contract's guarantee 7
+      // both name the event for a *crossing* — motion that would have left the
+      // valid volume — not merely touching its edge. An aircraft that kisses
+      // the boundary exactly and turns back inward never left the airspace.
       scratch.exited.add(previous.id);
       scratch.events.push({
         kind: "airspaceExited",
