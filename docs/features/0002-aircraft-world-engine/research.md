@@ -27,8 +27,8 @@ FEAT-0001 contracts. Each decision is a versioned rule of the world engine; chan
 - **Decision**: Each tick, for each aircraft, in a declared fixed order: (1) update
   heading toward target, clamped by `maxTurnRate` (exact integer math, millidegrees);
   (2) update speed to target (see R4); (3) update altitude toward target, clamped by
-  `maxClimbRate`/`maxDescentRate` scaled to per-tick mm (exact integer math); (4) advance
-  horizontal position `Δx = speed·(MS_PER_TICK/1000)·cos(heading)`,
+  the applicable climb/descent authority for this tick (see below; exact integer math);
+  (4) advance horizontal position `Δx = speed·(MS_PER_TICK/1000)·cos(heading)`,
   `Δy = speed·(MS_PER_TICK/1000)·sin(heading)` using the *new* heading and speed, with each
   component quantized round-half-to-even to integer mm at the boundary. No sub-unit
   remainder is carried between ticks.
@@ -37,10 +37,52 @@ FEAT-0001 contracts. Each decision is a versioned rule of the world engine; chan
   under ADR 0001's declared rounding. Carrying no remainder keeps the world engine a pure
   function of the snapshot (nothing hidden from replay); the per-tick rounding is a
   declared, versioned modelling choice, not drift. Order-of-update (steer, then move)
-  is fixed and documented so there is exactly one legal next state.
+  is fixed and documented so there is exactly one legal next state, and step (4) reads the
+  heading/speed steering already produced this tick — not the values the aircraft entered
+  the tick with — which is what makes a commanded turn bend the same tick's displacement.
 - **Alternatives considered**: Sub-mm residual accumulators (breaks "state is the whole
   truth" and forces a schema change to persist them); midpoint/RK integration (needless
   precision for a supervisory-control microworld the proposal wants simplified).
+
+### Climb/descent authority: a tick-keyed budget, not a rounded per-second rate
+
+- **Decision**: `perTickMm(ratePerSecond, tick)` in `ruleset.ts` computes the whole-mm
+  authority available *through* tick `tick` as `⌊tick · ratePerSecond · MS_PER_TICK /
+  1000⌋ − ⌊(tick − 1) · ratePerSecond · MS_PER_TICK / 1000⌋` — an exact integer budget
+  schedule keyed on the snapshot's absolute `simTime`, not a residual carried between
+  ticks. A rate that is a multiple of 10 mm/s gets the same constant per-tick bound on
+  every tick; a slower rate (down to 1 mm/s) gets 1 mm on the ticks where the cumulative
+  budget crosses a whole mm and 0 on the rest, with the mean rate over any window exactly
+  the declared one.
+- **Rationale**: An earlier version rounded the rate directly —
+  `quantizeHalfToEven(ratePerSecond · MS_PER_TICK / 1000)` — which rounds any rate under
+  10 mm/s to a bound of exactly 0 on *every* tick. An admitted altitude target under that
+  bound could never converge: `clampStep(delta, 0)` never moves, `targetReached` never
+  fires, and no event ever reports the stall (a contract-legal `maxClimbRate`/
+  `maxDescentRate` is only required to be a non-negative integer). The tick-keyed budget
+  is the exact fix: it never produces a 0 bound for a positive rate over any 10-tick
+  window, and it needs no new state — `tick` is already the value being computed, so
+  replay stays sufficient without a schema change. The arithmetic is integer-only, so
+  ADR 0001's boundary-rounding rule (which governs values leaving a *floating-point*
+  computation) does not apply to this function.
+- **Declared limitation carried forward, not fixed the same way**: the horizontal
+  displacement in step (4) has the same shape of problem — an aircraft below roughly
+  10 mm/s produces a step under 0.5 mm, which `quantizeHalfToEven` rounds to 0 and the
+  aircraft does not translate that tick — but a tick-keyed schedule does not generalize to
+  it, because the heading (and therefore the direction of each mm) can change between
+  ticks in a way altitude's single fixed axis cannot. The only correct general fix is a
+  sub-mm residual accumulator, which the position-update decision above already rejects
+  ("breaks 'state is the whole truth'"). This is accepted as a declared property of
+  ruleset v1: very slow aircraft (under ~10 mm/s) dead-reckon in place. Revisiting it is a
+  ruleset (and possibly contracts) decision, not a bug fix.
+- **Alternatives considered**: Flooring the per-tick bound at 1 mm (`max(1,
+  quantizeHalfToEven(...))`) — rejected because it flies a rate as slow as 1 mm/s up to
+  ten times faster than declared, which is a limit violation, not a fix, and the existing
+  turn-rate-respected-style test helpers would not catch it since they derive their bound
+  from the same function under test. Rejecting an admitted target as unreachable at
+  admission time — rejected because legality (R7) is deliberately only a range check
+  against the aircraft's own limits, and reachability given the declared rate is not a
+  controller error.
 
 ## R3 — Heading target semantics and wrap
 

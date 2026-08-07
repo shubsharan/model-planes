@@ -14,6 +14,16 @@ import type { MotionCommand } from "./legality.ts";
 import { err, ok } from "./result.ts";
 
 /**
+ * The three dimensions a motion command can target, in the engine's declared
+ * ordering. Single source for both the assignment vocabulary (`assignments.ts`)
+ * and the event vocabulary (`world-engine.ts`'s `TargetDimension`, re-exported
+ * from there under that name for the public contract) — one union instead of
+ * two independently declared but structurally identical ones.
+ */
+export const DIMENSIONS = ["heading", "altitude", "speed"] as const;
+export type AssignmentDimension = (typeof DIMENSIONS)[number];
+
+/**
  * The targets one aircraft is converging toward, plus commands already admitted
  * but not yet effective.
  *
@@ -48,22 +58,33 @@ export interface WorldEngineState {
 }
 
 /**
- * Validate a snapshot and wrap it as an initial state with no assignments and
- * no flags.
+ * Validate a snapshot and wrap it as an initial state with no assignments, no
+ * `exited` flags, and `exhausted` seeded from the snapshot itself.
  *
  * Takes `unknown` and defers entirely to the core parser, so the world engine
  * introduces no error vocabulary of its own: a snapshot this rejects is
  * rejected for exactly the reason the contract rejects it, with the same field
  * and message. Errs iff the snapshot is contract-invalid.
+ *
+ * `exhausted` is seeded, not left empty: an aircraft whose fuel-or-time window
+ * is already 0 at construction has already reached the state the field
+ * describes, even though it never *transitioned* there under this API. The
+ * `fuelExhausted` event stays transition-only (research R8) — state and event
+ * answer different questions, and it is correct that they differ here.
  */
 export function createWorldEngineState(snapshot: unknown): Result<WorldEngineState> {
   const parsed = parseWorldSnapshot(snapshot);
   if (!parsed.ok) return err(parsed.error);
 
+  const exhausted = new Set<string>();
+  for (const entry of parsed.value.aircraft) {
+    if (entry.fuelOrWindowRemaining === 0) exhausted.add(entry.id);
+  }
+
   return ok({
     snapshot: parsed.value,
     assignments: new Map<string, AircraftAssignments>(),
     exited: new Set<string>(),
-    exhausted: new Set<string>(),
+    exhausted,
   });
 }

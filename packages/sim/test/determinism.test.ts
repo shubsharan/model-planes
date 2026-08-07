@@ -1,20 +1,27 @@
 // T009: `advanceTick` is a deterministic, non-mutating function of its inputs.
 //
 // The oracle for every position assertion below is the declared motion rule
-// (spec FR-004, `docs/features/0002-aircraft-world-engine/data-model.md`), for a
-// tick with no commands — no steering, so pure dead reckoning:
+// (spec FR-004, `docs/features/0002-aircraft-world-engine/data-model.md`):
 //
 //   distanceScaled = speed * MS_PER_TICK                  // exact integer
 //   dx = quantizeHalfToEven(distanceScaled * cos(heading) / 1000)
 //   dy = quantizeHalfToEven(distanceScaled * sin(heading) / 1000)
+//
+// applied to the **post-steering** heading and speed — the values the outcome
+// itself reports. It lives in `test/harness.ts` as `expectedDelta`, and is
+// checked on every `advance` call in every suite, not only here and not only
+// on the uncommanded ticks this file happens to run (a commanded turn bends
+// the same tick's displacement — research R2; `motion.test.ts` anchors that
+// case with hand-computed absolute positions, which this relational oracle
+// cannot supply on its own).
 //
 // Note `dx` takes cos and `dy` takes sin: heading 0 is +x, heading 90000 is +y.
 //
 // The one-tick block hard-codes integers computed by hand rather than by calling
 // the engine's own helpers, so the suite states what the answer is rather than
 // restating how the engine gets there. Where a hand-computed constant would be
-// unreadable (a general oblique heading), the expectation is composed from an
-// independently written rounder in this file — see `expectedDelta`.
+// unreadable (a general oblique heading), the expectation is composed from
+// `expectedDelta` instead.
 import { describe, expect, it } from "vitest";
 import {
   AIRSPACE_BOUND_MM,
@@ -23,35 +30,11 @@ import {
   parseWorldSnapshot,
 } from "@model-planes/core";
 import { RULESET_VERSION } from "../src/ruleset.ts";
-import { cosMillideg, sinMillideg } from "../src/trig.ts";
-import { advanceTick } from "../src/world-engine.ts";
-import { type WorldEngineState, createWorldEngineState } from "../src/world-engine-state.ts";
 import { type MotionCommand, aircraft, deepFreeze, runway, snapshot } from "./fixtures.ts";
+import { advance, expectedDelta, type TickOutcome, stateOf } from "./harness.ts";
+import type { WorldEngineState } from "../src/world-engine-state.ts";
 
 // --- Local helpers -----------------------------------------------------------
-
-/** Milliseconds per tick, restated locally so the oracle is self-contained. */
-const MS_PER_TICK = 100;
-/** Milliseconds per second — the denominator of the mm/s → mm/tick scaling. */
-const MS_PER_SECOND = 1000;
-
-/** The engine's outcome, or a thrown failure — `Result` unwrapping in one place. */
-function advance(state: WorldEngineState, commands: readonly MotionCommand[] = []) {
-  const result = advanceTick(state, commands);
-  if (!result.ok) {
-    throw new Error(`${result.error.field}: ${result.error.message}`);
-  }
-  return result.value;
-}
-
-/** An initial state around a snapshot the fixtures guarantee is contract-valid. */
-function stateOf(input: WorldSnapshot): WorldEngineState {
-  const created = createWorldEngineState(input);
-  if (!created.ok) {
-    throw new Error(`test invariant: fixture snapshot is invalid — ${created.error.message}`);
-  }
-  return created.value;
-}
 
 /** The sole aircraft of a snapshot; fails loudly if the fixture has none. */
 function only(state: WorldEngineState): AircraftState {
@@ -71,35 +54,8 @@ function byId(state: WorldEngineState, id: string): AircraftState {
   return found;
 }
 
-/**
- * Round-half-to-even, written independently of `ruleset.ts`.
- *
- * Importing the engine's own `quantizeHalfToEven` would make the oblique-heading
- * assertion a tautology — the test would agree with the implementation by
- * construction. This version reaches the same rule by a different route
- * (`Math.round` plus an explicit tie correction) so agreeing with it is
- * evidence.
- */
-function halfToEven(value: number): number {
-  const negative = value < 0;
-  const magnitude = negative ? -value : value;
-  const down = Math.floor(magnitude);
-  const isTie = magnitude - down === 0.5;
-  const rounded = isTie ? (down % 2 === 0 ? down : down + 1) : Math.round(magnitude);
-  return negative && rounded !== 0 ? -rounded : rounded;
-}
-
-/** The declared one-tick displacement, recomposed from the rule's own terms. */
-function expectedDelta(speed: number, headingMillideg: number): { dx: number; dy: number } {
-  const distanceScaled = speed * MS_PER_TICK;
-  return {
-    dx: halfToEven((distanceScaled * cosMillideg(headingMillideg)) / MS_PER_SECOND),
-    dy: halfToEven((distanceScaled * sinMillideg(headingMillideg)) / MS_PER_SECOND),
-  };
-}
-
 /** The plain fields of a `TickOutcome` — everything but the `Result` wrapper. */
-function comparable(outcome: ReturnType<typeof advance>) {
+function comparable(outcome: TickOutcome) {
   return {
     rulesetVersion: outcome.rulesetVersion,
     snapshot: outcome.state.snapshot,
@@ -360,7 +316,7 @@ describe("advanceTick keeps every produced snapshot contract-valid", () => {
 describe("advanceTick never mutates its inputs", () => {
   it("advances a deeply frozen state and command list without throwing", () => {
     const input = deepFreeze(busyWorld());
-    const state = deepFreeze(stateOf(input));
+    const state = stateOf(input);
     const commands = deepFreeze([] as readonly MotionCommand[]);
 
     expect(() => {
@@ -373,7 +329,7 @@ describe("advanceTick never mutates its inputs", () => {
 
   it("leaves the caller's snapshot deep-equal to a freshly built identical one", () => {
     const input = deepFreeze(busyWorld());
-    const state = deepFreeze(stateOf(input));
+    const state = stateOf(input);
 
     let current: WorldEngineState = state;
     for (let i = 0; i < 5; i++) {
@@ -409,12 +365,10 @@ describe("advanceTick never mutates its inputs", () => {
 describe("advanceTick advances a world with no aircraft", () => {
   it("succeeds and returns an empty aircraft list one tick later", () => {
     const state = stateOf(snapshot({ aircraft: [] }));
-    const result = advanceTick(state, []);
+    const outcome = advance(state);
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.value.state.snapshot.aircraft).toEqual([]);
-    expect(result.value.state.snapshot.simTime).toBe(state.snapshot.simTime + 1);
+    expect(outcome.state.snapshot.aircraft).toEqual([]);
+    expect(outcome.state.snapshot.simTime).toBe(state.snapshot.simTime + 1);
   });
 
   it("reports nothing applied, rejected, superseded, or observed", () => {

@@ -7,12 +7,7 @@
 // the same values core produces: an `ok`/`error` discriminant plus an `unwrap`
 // that throws the core error class, so a `Result` from `sim` and one from `core`
 // are interchangeable at every call site and compare equal field by field.
-import {
-  type Result,
-  type SchemaError,
-  type SchemaErrorReason,
-  SchemaValidationError,
-} from "@model-planes/core";
+import { type Result, type SchemaError, SchemaValidationError } from "@model-planes/core";
 
 export function ok<T>(value: T): Result<T> {
   return { ok: true, value, unwrap: () => value };
@@ -26,13 +21,4 @@ export function err<T>(error: SchemaError): Result<T> {
       throw new SchemaValidationError(error);
     },
   };
-}
-
-/** Mirrors core's `schemaError` helper for the few errors `sim` originates. */
-export function schemaError(
-  field: string,
-  reason: SchemaErrorReason,
-  message: string,
-): SchemaError {
-  return { field, reason, message };
 }

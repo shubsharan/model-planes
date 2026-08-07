@@ -139,6 +139,32 @@ function reduce(millideg: number): { quadrant: number; withinQuadrant: number } 
 }
 
 /**
+ * Sine and cosine of the same angle, from a single range reduction and a
+ * single octant evaluation.
+ *
+ * The position update (`world-engine.ts`) needs both values for the same
+ * heading every tick. Calling {@link sinMillideg} and {@link cosMillideg}
+ * separately would run `reduce` twice and evaluate both Horner polynomials in
+ * `octantPair` twice, discarding half of each result. This is the one
+ * evaluation path; `sinMillideg`/`cosMillideg` below are sign-and-swap
+ * wrappers over it, so there is no second path that could drift from this one.
+ */
+export function sinCosMillideg(millideg: number): OctantPair {
+  const { quadrant, withinQuadrant } = reduce(millideg);
+  const pair = octantPair(withinQuadrant);
+  switch (quadrant) {
+    case 0:
+      return pair;
+    case 1:
+      return { sin: pair.cos, cos: negate(pair.sin) };
+    case 2:
+      return { sin: negate(pair.sin), cos: negate(pair.cos) };
+    default:
+      return { sin: negate(pair.cos), cos: pair.sin };
+  }
+}
+
+/**
  * Sine of an angle given in integer millidegrees.
  *
  * Domain is the contract's `[0, 360000)`; any other integer is wrapped into it
@@ -146,18 +172,7 @@ function reduce(millideg: number): { quadrant: number; withinQuadrant: number } 
  * never returns `-0`.
  */
 export function sinMillideg(millideg: number): number {
-  const { quadrant, withinQuadrant } = reduce(millideg);
-  const pair = octantPair(withinQuadrant);
-  switch (quadrant) {
-    case 0:
-      return pair.sin;
-    case 1:
-      return pair.cos;
-    case 2:
-      return negate(pair.sin);
-    default:
-      return negate(pair.cos);
-  }
+  return sinCosMillideg(millideg).sin;
 }
 
 /**
@@ -165,16 +180,5 @@ export function sinMillideg(millideg: number): number {
  * signed-zero guarantees as {@link sinMillideg}.
  */
 export function cosMillideg(millideg: number): number {
-  const { quadrant, withinQuadrant } = reduce(millideg);
-  const pair = octantPair(withinQuadrant);
-  switch (quadrant) {
-    case 0:
-      return pair.cos;
-    case 1:
-      return negate(pair.sin);
-    case 2:
-      return negate(pair.cos);
-    default:
-      return pair.sin;
-  }
+  return sinCosMillideg(millideg).cos;
 }

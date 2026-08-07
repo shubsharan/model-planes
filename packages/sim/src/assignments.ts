@@ -8,21 +8,13 @@
 // (Constitution I) without adding a field to the contract.
 import type { Millideg, Mm, MmPerSec } from "@model-planes/core";
 import type { CommandSupersession, MotionCommand } from "./legality.ts";
-import { type AircraftAssignments, NO_ASSIGNMENTS } from "./world-engine-state.ts";
+import {
+  type AircraftAssignments,
+  type AssignmentDimension,
+  NO_ASSIGNMENTS,
+} from "./world-engine-state.ts";
 
-/** The dimension an assignment governs — one per motion command kind. */
-export type AssignmentDimension = "heading" | "altitude" | "speed";
-
-export function dimensionOf(command: MotionCommand): AssignmentDimension {
-  switch (command.kind) {
-    case "assignHeading":
-      return "heading";
-    case "assignAltitude":
-      return "altitude";
-    case "assignSpeed":
-      return "speed";
-  }
-}
+export type { AssignmentDimension };
 
 /** True when an entry holds nothing at all and can be dropped from the map. */
 function isEmpty(entry: AircraftAssignments): boolean {

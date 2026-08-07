@@ -56,6 +56,45 @@ describe("createWorldEngineState accepts a contract-valid snapshot", () => {
   });
 });
 
+describe("createWorldEngineState seeds exhausted from the snapshot itself", () => {
+  // `exhausted` describes "reached 0", a state, not a transition — so an
+  // aircraft that is already at 0 at construction must already be in the set,
+  // even though there is no *transition* for `advanceTick` to ever report as a
+  // `fuelExhausted` event (see `events.test.ts`, which stays transition-only).
+  it("marks an aircraft with fuelOrWindowRemaining already 0 as exhausted", () => {
+    const input = snapshot({ aircraft: [aircraft({ fuelOrWindowRemaining: 0 })] });
+    const result = createWorldEngineState(input);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.exhausted.has("AC-1")).toBe(true);
+  });
+
+  it("leaves an aircraft with positive fuel unflagged", () => {
+    const input = snapshot({ aircraft: [aircraft({ fuelOrWindowRemaining: 1 })] });
+    const result = createWorldEngineState(input);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.exhausted.has("AC-1")).toBe(false);
+  });
+
+  it("seeds only the aircraft that are already at zero in a mixed fleet", () => {
+    const input = snapshot({
+      aircraft: [
+        aircraft({ id: "AC-1", fuelOrWindowRemaining: 0 }),
+        aircraft({ id: "AC-2", fuelOrWindowRemaining: 5 }),
+        aircraft({ id: "AC-3", fuelOrWindowRemaining: 0 }),
+      ],
+    });
+    const result = createWorldEngineState(input);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.exhausted).toEqual(new Set(["AC-1", "AC-3"]));
+  });
+});
+
 describe("createWorldEngineState rejects with the core parser's own error", () => {
   it("rejects a snapshot stamped with a different schema version", () => {
     expectCoreRejection({ ...snapshot(), schemaVersion: 999 });

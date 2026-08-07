@@ -23,23 +23,28 @@
 //     of different kinds never collide, so they compose.
 //
 // Steering runs before motion (research R2), so a turn commanded on a tick
-// affects that same tick's displacement — which is why every heading assertion
-// below reads the heading of the tick the command took effect on, not the one
-// after it.
+// affects that same tick's displacement. `test/harness.ts`'s `advance` checks
+// this on every tick of every suite (see `expectDisplacementDeclared` there);
+// the "bends the same tick's displacement" block below additionally pins three
+// absolute positions by hand, since that blanket check is relational (it
+// compares the reported position against the reported heading/speed) and
+// cannot by itself catch the reported heading or speed being wrong.
 import { describe, expect, it } from "vitest";
-import type { AircraftState } from "@model-planes/core";
 import {
   DEFAULT_LIMITS,
-  type MotionCommand,
   aircraft,
   altitudeCommand,
-  deepFreeze,
   headingCommand,
-  snapshot,
   speedCommand,
 } from "./fixtures.ts";
-import { createWorldEngineState, type WorldEngineState } from "../src/world-engine-state.ts";
-import { advanceTick, type TickOutcome } from "../src/world-engine.ts";
+import {
+  type TickOutcome,
+  planeIn,
+  run,
+  runWithFirstBatch,
+  stateOver,
+  tickAt,
+} from "./harness.ts";
 import { perTickMm, shortestTurnMillideg } from "../src/ruleset.ts";
 
 // --- Local helpers -----------------------------------------------------------
@@ -47,75 +52,14 @@ import { perTickMm, shortestTurnMillideg } from "../src/ruleset.ts";
 /** Per-tick heading authority of the fixture aircraft, in millidegrees. */
 const MAX_TURN = DEFAULT_LIMITS.maxTurnRate;
 
-/** Per-tick climb bound in mm: `perTickMm(20_000)` = 2_000. */
-const CLIMB_STEP = perTickMm(DEFAULT_LIMITS.maxClimbRate);
-
-/** Per-tick descent bound in mm: `perTickMm(30_000)` = 3_000. */
-const DESCENT_STEP = perTickMm(DEFAULT_LIMITS.maxDescentRate);
-
-/** Advances one tick, unwrapping the `Result`; an error here is a test failure. */
-function advance(state: WorldEngineState, commands: readonly MotionCommand[] = []): TickOutcome {
-  const result = advanceTick(state, commands);
-  if (!result.ok) {
-    throw new Error(`advanceTick errored: ${result.error.field}: ${result.error.message}`);
-  }
-  return result.value;
-}
-
-/** An initial state over `fleet`, deep-frozen so any input mutation throws. */
-function stateOver(fleet: readonly AircraftState[]): WorldEngineState {
-  const created = createWorldEngineState(deepFreeze(snapshot({ aircraft: fleet })));
-  if (!created.ok) {
-    throw new Error(
-      `test invariant: fixture snapshot is contract-invalid: ${created.error.message}`,
-    );
-  }
-  return created.value;
-}
-
 /**
- * Runs `count` ticks, submitting `commandsByTick.get(i)` on the i-th call (0 is
- * the call that produces tick 1). Returns every outcome in order.
+ * Per-tick climb/descent bound in mm, for the fixture's declared rates. Both
+ * rates are multiples of 10 mm/s, so `perTickMm` returns the same bound on
+ * every tick regardless of which tick is asked — the tick argument only
+ * matters for a rate under 10 mm/s (see the stall regressions below).
  */
-function run(
-  initial: WorldEngineState,
-  count: number,
-  commandsByTick: ReadonlyMap<number, readonly MotionCommand[]> = new Map(),
-): readonly TickOutcome[] {
-  const outcomes: TickOutcome[] = [];
-  let state = initial;
-  for (let i = 0; i < count; i++) {
-    const outcome = advance(state, commandsByTick.get(i) ?? []);
-    outcomes.push(outcome);
-    state = outcome.state;
-  }
-  return outcomes;
-}
-
-/** Sugar for the common case: one batch on the very first call. */
-function runWithFirstBatch(
-  initial: WorldEngineState,
-  count: number,
-  commands: readonly MotionCommand[],
-): readonly TickOutcome[] {
-  return run(initial, count, new Map([[0, commands]]));
-}
-
-/** The aircraft `id` in an outcome's snapshot — absence is a test failure. */
-function planeIn(outcome: TickOutcome, id: string): AircraftState {
-  const found = outcome.state.snapshot.aircraft.find((candidate) => candidate.id === id);
-  if (found === undefined) {
-    throw new Error(`test invariant: aircraft ${id} vanished from the snapshot`);
-  }
-  return found;
-}
-
-/** The outcome at `index` — a short run is a test-setup bug, not a failure. */
-function tickAt(outcomes: readonly TickOutcome[], index: number): TickOutcome {
-  const outcome = outcomes[index];
-  if (outcome === undefined) throw new Error(`test invariant: run shorter than ${index + 1} ticks`);
-  return outcome;
-}
+const CLIMB_STEP = perTickMm(DEFAULT_LIMITS.maxClimbRate, 1);
+const DESCENT_STEP = perTickMm(DEFAULT_LIMITS.maxDescentRate, 1);
 
 const headings = (outcomes: readonly TickOutcome[]): readonly number[] =>
   outcomes.map((outcome) => planeIn(outcome, "AC-1").heading);
@@ -171,6 +115,48 @@ function expectSpeedWithinLimits(outcomes: readonly TickOutcome[]): void {
     expect(speed).toBeLessThanOrEqual(DEFAULT_LIMITS.maxSpeed);
   }
 }
+
+// --- Same-tick displacement (research R2) ------------------------------------
+
+describe("advanceTick bends the same tick's displacement by what it commands", () => {
+  // maxTurnRate is 3_000 millideg, so the post-steering heading is 3°, and the
+  // 10_000 mm step resolves along it: (9986, 523), computed via the engine's
+  // own trig — not (10_000, 0), which is what using the PREVIOUS heading 0
+  // would report.
+  it("uses the post-steering heading, not the one the tick started on", () => {
+    const outcomes = runWithFirstBatch(stateOver([aircraft({ heading: 0, speed: 100_000 })]), 2, [
+      headingCommand("AC-1", 90_000, 0, 1),
+    ]);
+    const first = planeIn(tickAt(outcomes, 0), "AC-1");
+
+    expect(first.heading).toBe(3_000);
+    expect(first.position).toEqual({ x: 9_986, y: 523, z: 1_000_000 });
+  });
+
+  // Heading 0 the whole tick, so cos(0) is exactly 1 and the step is plain
+  // integer arithmetic — the one anchor that needs no trig approximation at all.
+  it("uses the commanded speed for the same tick's displacement", () => {
+    const outcomes = runWithFirstBatch(stateOver([aircraft({ heading: 0, speed: 100_000 })]), 2, [
+      speedCommand("AC-1", 200_000, 0, 1),
+    ]);
+    const first = planeIn(tickAt(outcomes, 0), "AC-1");
+
+    expect(first.speed).toBe(200_000);
+    expect(first.position.x).toBe(20_000); // not 10_000, the pre-command step
+  });
+
+  // Composition: both axes commanded together, and the step must use both new
+  // values — not one new and one old.
+  it("uses both the new heading and the new speed when they are commanded together", () => {
+    const outcomes = runWithFirstBatch(stateOver([aircraft({ heading: 0, speed: 100_000 })]), 2, [
+      headingCommand("AC-1", 90_000, 0, 1),
+      speedCommand("AC-1", 200_000, 0, 1),
+    ]);
+    const first = planeIn(tickAt(outcomes, 0), "AC-1");
+
+    expect(first.position).toEqual({ x: 19_973, y: 1_047, z: 1_000_000 });
+  });
+});
 
 // --- T013: convergence -------------------------------------------------------
 
@@ -252,6 +238,21 @@ describe("advanceTick converges an aircraft toward assigned targets within its l
     expectTurnRateRespected(0, headings(outcomes));
   });
 
+  // A `maxTurnRate` of 0 is contract-legal (core only requires rates >= 0) and
+  // means exactly what it says: this aircraft cannot turn. Holding an
+  // unreachable heading target forever is the correct behaviour, not a stall —
+  // contrast with the climb/descent rates below, which are genuinely fixable.
+  it("holds an unreachable heading target forever when maxTurnRate is 0, without error", () => {
+    const outcomes = runWithFirstBatch(
+      stateOver([aircraft({ heading: 0, limits: { maxTurnRate: 0 } })]),
+      5,
+      [headingCommand("AC-1", 90_000, 0, 1)],
+    );
+
+    expect(headings(outcomes)).toEqual([0, 0, 0, 0, 0]);
+    expect(reachedIndices(outcomes, "heading", "AC-1")).toEqual([]);
+  });
+
   // --- Altitude --------------------------------------------------------------
 
   it("climbs at the climb bound and holds on arrival", () => {
@@ -280,6 +281,38 @@ describe("advanceTick converges an aircraft toward assigned targets within its l
       expect(z).toBeGreaterThanOrEqual(0);
     }
     expectAltitudeRateRespected(12_000, sequence);
+  });
+
+  // A climb/descent rate under 10 mm/s is less than 1 mm per 100 ms tick.
+  // `perTickMm` used to round such a rate to a per-tick bound of 0 on every
+  // tick, so an admitted target stalled forever with no event ever reported.
+  // The fix (ruleset.ts's tick-keyed budget schedule) grants 1 mm on every
+  // 10th/(rate)-th tick instead, so the long-run rate is exactly the declared
+  // one and the target is still reached.
+  it("climbs at a rate that used to quantize to a zero per-tick bound", () => {
+    const outcomes = runWithFirstBatch(
+      stateOver([aircraft({ position: { z: 1_000_000 }, limits: { maxClimbRate: 5 } })]),
+      4,
+      [altitudeCommand("AC-1", 1_000_001, 0, 1)],
+    );
+
+    // Old rule: perTickMm(5) === 0 on every tick, so this sequence would have
+    // been [1_000_000, 1_000_000, 1_000_000, 1_000_000] forever.
+    expect(altitudes(outcomes)).toEqual([1_000_000, 1_000_001, 1_000_001, 1_000_001]);
+    expect(reachedIndices(outcomes, "altitude", "AC-1")).toEqual([1]);
+  });
+
+  it("descends at a rate that used to quantize to a zero per-tick bound", () => {
+    const outcomes = runWithFirstBatch(
+      stateOver([aircraft({ position: { z: 1_000_010 }, limits: { maxDescentRate: 3 } })]),
+      6,
+      [altitudeCommand("AC-1", 1_000_009, 0, 1)],
+    );
+
+    expect(altitudes(outcomes)).toEqual([
+      1_000_010, 1_000_010, 1_000_010, 1_000_009, 1_000_009, 1_000_009,
+    ]);
+    expect(reachedIndices(outcomes, "altitude", "AC-1")).toEqual([3]);
   });
 
   // --- Speed (research R4) ---------------------------------------------------

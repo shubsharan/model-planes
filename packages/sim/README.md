@@ -40,16 +40,16 @@ Scope this package still carries, not yet built:
 
 `src/` is one module per concern; only `index.ts` is public.
 
-| Module                  | Owns                                                                                                           |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `index.ts`              | The public barrel — exactly the surface in the API contract. Re-exports nothing from `core`.                   |
-| `ruleset.ts`            | `RULESET_VERSION` and every numeric constant and rule function the dynamics depend on, including quantization. |
-| `trig.ts`               | Deterministic `sinMillideg` / `cosMillideg` over integer millidegrees. Internal.                               |
-| `legality.ts`           | The `MotionCommand` control surface and the fixed-order admission checks.                                      |
-| `assignments.ts`        | Folding admitted commands into per-aircraft targets: queueing, supersession, activation, target clearing.      |
-| `world-engine-state.ts` | The immutable working state and its constructor.                                                               |
-| `world-engine.ts`       | `advanceTick` — the fixed update order, event ordering, and contract re-validation.                            |
-| `result.ts`             | Local `ok` / `err` constructors structurally identical to core's `Result`. Internal.                           |
+| Module                  | Owns                                                                                                                                          |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `index.ts`              | The public barrel — exactly the surface in the API contract. Re-exports nothing from `core`.                                                  |
+| `ruleset.ts`            | `RULESET_VERSION` and every rule the dynamics depend on: quantization, the climb/descent tick-budget schedule, the fuel floor, heading wrap. |
+| `trig.ts`               | Deterministic `sinCosMillideg` (and the `sinMillideg`/`cosMillideg` wrappers over it) over integer millidegrees. Internal.                    |
+| `legality.ts`           | The `MotionCommand` control surface and the fixed-order admission checks.                                                                     |
+| `assignments.ts`        | Folding admitted commands into per-aircraft targets: queueing, supersession, activation, target clearing.                                    |
+| `world-engine-state.ts` | The immutable working state, its constructor, and the shared `AssignmentDimension`/`DIMENSIONS` vocabulary.                                   |
+| `world-engine.ts`       | `advanceTick` — the fixed update order, event ordering, and contract re-validation.                                                           |
+| `result.ts`             | Local `ok` / `err` constructors structurally identical to core's `Result`. Internal.                                                          |
 
 ## Public surface
 

@@ -22,70 +22,33 @@
 // Every boundary here is asserted from both sides — the first illegal value and
 // the last legal one — because an off-by-one in an admission rule is invisible
 // from the illegal side alone.
+//
+// `advance` (imported from `test/harness.ts`) already asserts that an illegal
+// command is rejected rather than erroring, and checks the displacement rule on
+// every tick — both apply here exactly as they do in every other suite.
 import { describe, expect, it } from "vitest";
-import { AIRSPACE_BOUND_MM, type AircraftState } from "@model-planes/core";
+import { AIRSPACE_BOUND_MM } from "@model-planes/core";
 import { REJECTION_REASONS, type RejectionReason } from "../src/legality.ts";
-import { createWorldEngineState, type WorldEngineState } from "../src/world-engine-state.ts";
-import { advanceTick, type TickOutcome } from "../src/world-engine.ts";
 import {
   DEFAULT_LIMITS,
   type MotionCommand,
   aircraft,
   altitudeCommand,
-  deepFreeze,
   headingCommand,
-  snapshot,
   speedCommand,
 } from "./fixtures.ts";
+import { advance as advanceTickChecked, type TickOutcome, planeIn, stateOver } from "./harness.ts";
 
 // --- Local helpers -----------------------------------------------------------
 
-/**
- * Advances one tick, unwrapping the `Result`.
- *
- * An `err` is asserted against, not merely thrown: the contract says command
- * illegality is reported as `rejected` and never as an error, so an illegal
- * proposal that reaches the motion rules and produces an off-contract snapshot
- * is itself an admission failure — and one worth naming in the output.
- */
-function advance(state: WorldEngineState, commands: readonly MotionCommand[] = []): TickOutcome {
-  const result = advanceTick(state, commands);
-  expect(
-    result.ok ? "" : `${result.error.field}: ${result.error.message}`,
-    "advanceTick must reject illegal commands, not error",
-  ).toBe("");
-  if (!result.ok) {
-    throw new Error(`advanceTick errored: ${result.error.field}: ${result.error.message}`);
-  }
-  return result.value;
-}
-
-/** An initial state over `fleet` at `simTime`, deep-frozen so any mutation throws. */
-function stateOver(fleet: readonly AircraftState[], simTime = 0): WorldEngineState {
-  const created = createWorldEngineState(deepFreeze(snapshot({ simTime, aircraft: fleet })));
-  if (!created.ok) {
-    throw new Error(
-      `test invariant: fixture snapshot is contract-invalid: ${created.error.message}`,
-    );
-  }
-  return created.value;
-}
-
 /** The default one-aircraft world ("AC-1") at `simTime`. */
-function soloWorld(simTime = 0): WorldEngineState {
+function soloWorld(simTime = 0): ReturnType<typeof stateOver> {
   return stateOver([aircraft()], simTime);
 }
 
 /** The earliest tick a command submitted against `state` may take effect. */
-function nextTickOf(state: WorldEngineState): number {
+function nextTickOf(state: ReturnType<typeof stateOver>): number {
   return state.snapshot.simTime + 1;
-}
-
-/** The aircraft `id` in an outcome's snapshot — absence is a test failure. */
-function planeIn(outcome: TickOutcome, id: string): AircraftState {
-  const found = outcome.state.snapshot.aircraft.find((candidate) => candidate.id === id);
-  if (found === undefined) throw new Error(`test invariant: aircraft ${id} vanished`);
-  return found;
 }
 
 /** The single rejection in an outcome — any other count is a test failure. */
@@ -126,7 +89,7 @@ function expectAccepted(outcome: TickOutcome): void {
 describe("advanceTick rejects an illegal command for the declared reason", () => {
   it("rejects a command naming an aircraft that is not in the world", () => {
     const state = soloWorld();
-    const outcome = advance(state, [
+    const outcome = advanceTickChecked(state, [
       headingCommand("AC-NOPE", 90_000, state.snapshot.simTime, nextTickOf(state)),
     ]);
 
@@ -137,21 +100,23 @@ describe("advanceTick rejects an illegal command for the declared reason", () =>
     const state = soloWorld(5);
     // nextTick is 6; effective at 5 is already in the past by the time this tick
     // is computed, so it could never have influenced motion.
-    const outcome = advance(state, [headingCommand("AC-1", 90_000, 5, nextTickOf(state) - 1)]);
+    const outcome = advanceTickChecked(state, [
+      headingCommand("AC-1", 90_000, 5, nextTickOf(state) - 1),
+    ]);
 
     expectSoleRejection(outcome, "staleEffectiveAt");
   });
 
   it("rejects a far-past effective time against an advanced clock", () => {
     const state = soloWorld(10);
-    const outcome = advance(state, [headingCommand("AC-1", 90_000, 0, 0)]);
+    const outcome = advanceTickChecked(state, [headingCommand("AC-1", 90_000, 0, 0)]);
 
     expectSoleRejection(outcome, "staleEffectiveAt");
   });
 
   it("accepts a command effective exactly at the earliest legal tick", () => {
     const state = soloWorld(5);
-    const outcome = advance(state, [headingCommand("AC-1", 90_000, 5, nextTickOf(state))]);
+    const outcome = advanceTickChecked(state, [headingCommand("AC-1", 90_000, 5, nextTickOf(state))]);
 
     // The boundary is inclusive: `effectiveAt === nextTick` is on time, not late.
     expectAccepted(outcome);
@@ -159,7 +124,7 @@ describe("advanceTick rejects an illegal command for the declared reason", () =>
 
   it("rejects a speed above the targeted aircraft's maximum", () => {
     const state = soloWorld();
-    const outcome = advance(state, [
+    const outcome = advanceTickChecked(state, [
       speedCommand("AC-1", DEFAULT_LIMITS.maxSpeed + 1, 0, nextTickOf(state)),
     ]);
 
@@ -169,7 +134,7 @@ describe("advanceTick rejects an illegal command for the declared reason", () =>
 
   it("rejects a speed below the targeted aircraft's minimum", () => {
     const state = soloWorld();
-    const outcome = advance(state, [
+    const outcome = advanceTickChecked(state, [
       speedCommand("AC-1", DEFAULT_LIMITS.minSpeed - 1, 0, nextTickOf(state)),
     ]);
 
@@ -179,12 +144,12 @@ describe("advanceTick rejects an illegal command for the declared reason", () =>
   it("accepts speeds of exactly the minimum and exactly the maximum", () => {
     const atMin = soloWorld();
     expectAccepted(
-      advance(atMin, [speedCommand("AC-1", DEFAULT_LIMITS.minSpeed, 0, nextTickOf(atMin))]),
+      advanceTickChecked(atMin, [speedCommand("AC-1", DEFAULT_LIMITS.minSpeed, 0, nextTickOf(atMin))]),
     );
 
     const atMax = soloWorld();
     expectAccepted(
-      advance(atMax, [speedCommand("AC-1", DEFAULT_LIMITS.maxSpeed, 0, nextTickOf(atMax))]),
+      advanceTickChecked(atMax, [speedCommand("AC-1", DEFAULT_LIMITS.maxSpeed, 0, nextTickOf(atMax))]),
     );
   });
 
@@ -194,7 +159,7 @@ describe("advanceTick rejects an illegal command for the declared reason", () =>
     // negative altitude at parse time, so a below-floor proposal cannot reach a
     // well-formed `MotionCommand` in the first place. The ceiling has no such
     // upstream guard, which makes it the case admission must own.
-    const outcome = advance(state, [
+    const outcome = advanceTickChecked(state, [
       altitudeCommand("AC-1", AIRSPACE_BOUND_MM + 1, 0, nextTickOf(state)),
     ]);
 
@@ -204,16 +169,18 @@ describe("advanceTick rejects an illegal command for the declared reason", () =>
   it("accepts altitudes of exactly the ceiling and exactly zero", () => {
     const atCeiling = soloWorld();
     expectAccepted(
-      advance(atCeiling, [altitudeCommand("AC-1", AIRSPACE_BOUND_MM, 0, nextTickOf(atCeiling))]),
+      advanceTickChecked(atCeiling, [
+        altitudeCommand("AC-1", AIRSPACE_BOUND_MM, 0, nextTickOf(atCeiling)),
+      ]),
     );
 
     const atFloor = soloWorld();
-    expectAccepted(advance(atFloor, [altitudeCommand("AC-1", 0, 0, nextTickOf(atFloor))]));
+    expectAccepted(advanceTickChecked(atFloor, [altitudeCommand("AC-1", 0, 0, nextTickOf(atFloor))]));
   });
 
   it("rejects a heading at the exclusive upper bound of 360000", () => {
     const state = soloWorld();
-    const outcome = advance(state, [headingCommand("AC-1", 360_000, 0, nextTickOf(state))]);
+    const outcome = advanceTickChecked(state, [headingCommand("AC-1", 360_000, 0, nextTickOf(state))]);
 
     // 360000 millidegrees is 0 restated, but admission does not normalize — a
     // wrapped value would be a silent edit of the proposal.
@@ -222,17 +189,19 @@ describe("advanceTick rejects an illegal command for the declared reason", () =>
 
   it("rejects a negative heading", () => {
     const state = soloWorld();
-    const outcome = advance(state, [headingCommand("AC-1", -1, 0, nextTickOf(state))]);
+    const outcome = advanceTickChecked(state, [headingCommand("AC-1", -1, 0, nextTickOf(state))]);
 
     expectSoleRejection(outcome, "headingOutOfRange");
   });
 
   it("accepts headings of exactly 0 and exactly 359999", () => {
     const atZero = soloWorld();
-    expectAccepted(advance(atZero, [headingCommand("AC-1", 0, 0, nextTickOf(atZero))]));
+    expectAccepted(advanceTickChecked(atZero, [headingCommand("AC-1", 0, 0, nextTickOf(atZero))]));
 
     const atTop = soloWorld();
-    expectAccepted(advance(atTop, [headingCommand("AC-1", 359_999, 0, nextTickOf(atTop))]));
+    expectAccepted(
+      advanceTickChecked(atTop, [headingCommand("AC-1", 359_999, 0, nextTickOf(atTop))]),
+    );
   });
 
   it("exercises every declared rejection reason", () => {
@@ -252,11 +221,11 @@ describe("advanceTick applies zero state effect from rejected commands", () => {
    * The commands must all be rejected for this to be the right expectation.
    */
   function expectIndistinguishableFromEmptyTick(
-    build: () => WorldEngineState,
+    build: () => ReturnType<typeof stateOver>,
     commands: readonly MotionCommand[],
   ): void {
-    const withCommands = advance(build(), commands);
-    const withoutCommands = advance(build());
+    const withCommands = advanceTickChecked(build(), commands);
+    const withoutCommands = advanceTickChecked(build());
 
     expect(withCommands.rejected).toHaveLength(commands.length);
     expect(withCommands.applied).toEqual([]);
@@ -296,7 +265,7 @@ describe("advanceTick reports the rejected proposal exactly as submitted", () =>
     const proposal = speedCommand("AC-1", DEFAULT_LIMITS.maxSpeed + 1, 0, nextTickOf(state));
     const snapshotOfProposal = structuredClone(proposal);
 
-    const rejection = onlyRejection(advance(state, [proposal]));
+    const rejection = onlyRejection(advanceTickChecked(state, [proposal]));
 
     // Deep equality proves no field was edited; reference equality proves the
     // engine did not normalize the proposal into a look-alike.
@@ -306,7 +275,7 @@ describe("advanceTick reports the rejected proposal exactly as submitted", () =>
 
   it("labels the rejection with a declared reason and a non-empty detail", () => {
     const state = soloWorld();
-    const rejection = onlyRejection(advance(state, [headingCommand("AC-1", -1, 0, 1)]));
+    const rejection = onlyRejection(advanceTickChecked(state, [headingCommand("AC-1", -1, 0, 1)]));
 
     expect(REJECTION_REASONS).toContain(rejection.reason);
     // `detail` is human-readable and non-normative: its presence is contractual,
@@ -333,7 +302,7 @@ describe("advanceTick applies the legal commands in a batch that also has illega
     const illegal = speedCommand("AC-1", DEFAULT_LIMITS.maxSpeed + 1, 0, nextTickOf(state));
     const legal = headingCommand("AC-1", 90_000, 0, nextTickOf(state));
 
-    expectSplit(advance(state, [illegal, legal]), legal, illegal);
+    expectSplit(advanceTickChecked(state, [illegal, legal]), legal, illegal);
   });
 
   it("applies the legal command when the illegal one is submitted last", () => {
@@ -341,7 +310,7 @@ describe("advanceTick applies the legal commands in a batch that also has illega
     const legal = headingCommand("AC-1", 90_000, 0, nextTickOf(state));
     const illegal = speedCommand("AC-1", DEFAULT_LIMITS.maxSpeed + 1, 0, nextTickOf(state));
 
-    expectSplit(advance(state, [legal, illegal]), legal, illegal);
+    expectSplit(advanceTickChecked(state, [legal, illegal]), legal, illegal);
   });
 
   it("reports multiple rejections in submission order", () => {
@@ -350,7 +319,7 @@ describe("advanceTick applies the legal commands in a batch that also has illega
     const second = speedCommand("AC-1", DEFAULT_LIMITS.minSpeed - 1, 0, nextTickOf(state));
     const third = altitudeCommand("AC-1", AIRSPACE_BOUND_MM + 1, 0, nextTickOf(state));
 
-    const outcome = advance(state, [first, second, third]);
+    const outcome = advanceTickChecked(state, [first, second, third]);
 
     // Submission order, not check order and not aircraft order: the controller's
     // own sequence is the only ordering that is reproducible for them.
@@ -388,7 +357,7 @@ describe("advanceTick accounts for every submitted command", () => {
 
     // Every effectiveAt equals nextTick, so no command is merely queued for a
     // future tick — each one has to be resolved by this outcome.
-    const outcome = advance(state, submitted);
+    const outcome = advanceTickChecked(state, submitted);
 
     // Accounting rule: a command is accounted for if it appears in `applied`, in
     // `rejected`, or on *either* side of a supersession. The winning command of a

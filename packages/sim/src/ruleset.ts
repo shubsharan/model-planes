@@ -47,15 +47,36 @@ export function tickDistanceScaled(speedMmPerSec: number): number {
 }
 
 /**
- * A per-second rate (mm/s) expressed as its per-tick bound in whole mm.
+ * Whole-mm altitude authority accumulated through tick `tick`, for a rate
+ * declared in mm/s, minus the authority already spent through tick `tick - 1`.
  *
- * Used for the climb and descent limits, which the core contracts declare in
- * mm/s while altitude steps are per tick. Quantized under the declared rounding
- * rule so a rate that is not a multiple of 10 still yields one legal integer
- * bound rather than a float (ADR 0001).
+ * A rate under 10 mm/s produces less than 1 mm of displacement per 100 ms tick.
+ * Rounding such a rate with `quantizeHalfToEven(rate * MS_PER_TICK /
+ * MS_PER_SECOND)` — the previous rule — produces a per-tick bound of exactly 0,
+ * which stalls an admitted altitude target forever: `clampStep(delta, 0)` never
+ * moves, `targetReached` never fires, and no event ever reports the stall.
+ * Flooring the bound at 1 mm/tick would fix the stall but fly the aircraft up
+ * to ten times faster than its declared rate — a limit violation dressed as a
+ * bug fix.
+ *
+ * This is the exact alternative: an integer budget schedule keyed on the
+ * absolute tick, so it stays a pure function of the snapshot's `simTime` (no
+ * per-aircraft phase state to carry between ticks — replay stays sufficient).
+ * A 1 mm/s aircraft receives 1 mm of authority on every 10th tick and 0 on the
+ * rest; its mean rate over any window is exactly the declared rate. Integer
+ * arithmetic throughout — no float ever crosses this boundary, so ADR 0001's
+ * boundary-rounding rule does not apply here.
+ *
+ * Unchanged for any rate that is a multiple of 10 mm/s — every existing fixture
+ * rate is — where the schedule produces the same constant bound every tick that
+ * the old rounding rule did.
  */
-export function perTickMm(ratePerSecond: number): number {
-  return quantizeHalfToEven((ratePerSecond * MS_PER_TICK) / MS_PER_SECOND);
+export function perTickMm(ratePerSecond: number, tick: number): number {
+  const perTickScaled = ratePerSecond * MS_PER_TICK;
+  return (
+    Math.floor((tick * perTickScaled) / MS_PER_SECOND) -
+    Math.floor(((tick - 1) * perTickScaled) / MS_PER_SECOND)
+  );
 }
 
 // --- Boundary quantization (ADR 0001, research R2) ---------------------------
@@ -76,6 +97,10 @@ export function perTickMm(ratePerSecond: number): number {
  *
  * `Math.floor` and `Math.abs` are exact integer-valued operations, not
  * transcendentals — they carry no cross-platform ambiguity.
+ *
+ * `test/ruleset.test.ts` sweeps a value grid through this function and core's
+ * `quantizeToBaseUnit`, asserting agreement — the link ADR 0001 requires
+ * between the two independent implementations.
  */
 export function quantizeHalfToEven(value: number): number {
   const negative = value < 0;
@@ -132,20 +157,32 @@ export function wrapHeadingMillideg(millideg: number): number {
 
 /**
  * Amount `fuelOrWindowRemaining` decreases by each tick. The declared default
- * rule: one unit per tick, floored at 0. Reaching 0 raises `fuelExhausted`
- * exactly once and flags the aircraft permanently; it keeps flying, because
- * removal policy belongs to a later feature (spec Assumptions).
+ * rule: one unit per tick, floored at 0 (see `nextFuel`). Reaching 0 raises
+ * `fuelExhausted` exactly once and flags the aircraft permanently; it keeps
+ * flying, because removal policy belongs to a later feature (spec Assumptions).
  */
 export const FUEL_DECREMENT_PER_TICK = 1;
 
-// --- Speed rule (research R4) -------------------------------------------------
-
 /**
- * Ruleset v1 applies an assigned speed in full at its effective tick — there is
- * no acceleration limit, because `AircraftPerformanceLimits` declares none and
- * inventing one would add dynamics the contracts cannot express (and that a
- * controller could not read off a snapshot). Legality still bounds the target to
- * `[minSpeed, maxSpeed]` at admission, so speed never leaves its declared range.
- * Adding an acceleration bound later is a ruleset *and* a contracts revision.
+ * `fuelOrWindowRemaining` after one tick's decrement, floored at 0.
+ *
+ * The floor is the declared rule, not an artifact of `FUEL_DECREMENT_PER_TICK`
+ * happening to be 1: a caller-side `fuelBefore - FUEL_DECREMENT_PER_TICK` only
+ * avoids going negative because the decrement is exactly 1 today. Any other
+ * declared decrement would produce a negative value, which the core contract
+ * rejects — failing the whole tick's re-validation instead of floor-ing.
  */
-export const SPEED_CONVERGES_INSTANTLY = true;
+export function nextFuel(remaining: number): number {
+  const next = remaining - FUEL_DECREMENT_PER_TICK;
+  return next > 0 ? next : 0;
+}
+
+// --- Speed rule (research R4) -------------------------------------------------
+//
+// Ruleset v1 applies an assigned speed in full at its effective tick — there is
+// no acceleration limit, because `AircraftPerformanceLimits` declares none and
+// inventing one would add dynamics the contracts cannot express (and that a
+// controller could not read off a snapshot). Legality still bounds the target to
+// `[minSpeed, maxSpeed]` at admission, so speed never leaves its declared range.
+// Adding an acceleration bound later is a ruleset *and* a contracts revision.
+// The rule itself is `world-engine.ts`'s steer block: `speed = targetSpeed`.

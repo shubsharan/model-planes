@@ -62,11 +62,17 @@ The world engine's complete working state. Immutable; every tick returns a fresh
 - `snapshot`: `WorldSnapshot` — the authoritative world.
 - `assignments`: map aircraft `id` → `AircraftAssignments` (ids ⊆ snapshot aircraft ids).
 - `exited`: set of aircraft ids frozen at the airspace boundary (research R8).
-- `exhausted`: set of aircraft ids whose fuel-or-time window reached 0.
-- Constructor `createWorldEngineState(snapshot)` validates via `parseWorldSnapshot` and
-  starts with empty assignments/flags.
+- `exhausted`: set of aircraft ids whose fuel-or-time window has reached 0 — a state
+  predicate, not a transition record (contrast the `fuelExhausted` *event*, which is
+  transition-only; see `WorldEngineEvent` below).
+- Constructor `createWorldEngineState(snapshot)` validates via `parseWorldSnapshot`,
+  starts with empty `assignments` and `exited`, and seeds `exhausted` directly from the
+  snapshot: any aircraft whose `fuelOrWindowRemaining` is already 0 is in the set from
+  construction, even though no `fuelExhausted` event is ever raised for it (there is no
+  positive→0 transition to report).
 - Invariants: `snapshot` always passes `parseWorldSnapshot`; `exited`/`exhausted` ⊆
-  snapshot aircraft ids; an id in `exited` has motion frozen from that tick on.
+  snapshot aircraft ids; an id in `exited` has motion frozen from that tick on; an id is
+  in `exhausted` if and only if its `fuelOrWindowRemaining` is 0.
 
 ### CommandRejection
 

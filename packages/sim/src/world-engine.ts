@@ -28,9 +28,9 @@ import {
   screenCommands,
 } from "./legality.ts";
 import {
-  FUEL_DECREMENT_PER_TICK,
   MS_PER_SECOND,
   RULESET_VERSION,
+  nextFuel,
   perTickMm,
   quantizeHalfToEven,
   shortestTurnMillideg,
@@ -38,15 +38,21 @@ import {
   wrapHeadingMillideg,
 } from "./ruleset.ts";
 import { err, ok } from "./result.ts";
-import { cosMillideg, sinMillideg } from "./trig.ts";
+import { sinCosMillideg } from "./trig.ts";
 import {
   type AircraftAssignments,
+  type AssignmentDimension,
+  DIMENSIONS,
   NO_ASSIGNMENTS,
   type WorldEngineState,
 } from "./world-engine-state.ts";
 
-/** The dimension a `targetReached` event refers to. */
-export type TargetDimension = "heading" | "altitude" | "speed";
+/**
+ * The dimension a `targetReached` event refers to — the assignment vocabulary
+ * (`world-engine-state.ts`'s `AssignmentDimension`), re-exported under the
+ * public contract's name (`world-engine-api.md`).
+ */
+export type TargetDimension = AssignmentDimension;
 
 /** Something that happened to one aircraft on one tick. */
 export type WorldEngineEvent =
@@ -84,26 +90,46 @@ const EVENT_KIND_RANK: Readonly<Record<WorldEngineEvent["kind"], number>> = {
   targetReached: 2,
 };
 
-const DIMENSION_RANK: Readonly<Record<TargetDimension, number>> = {
-  heading: 0,
-  altitude: 1,
-  speed: 2,
-};
-
 function compareEvents(a: WorldEngineEvent, b: WorldEngineEvent): number {
   if (a.aircraftId !== b.aircraftId) return a.aircraftId < b.aircraftId ? -1 : 1;
   const kindDelta = EVENT_KIND_RANK[a.kind] - EVENT_KIND_RANK[b.kind];
   if (kindDelta !== 0) return kindDelta;
   if (a.kind === "targetReached" && b.kind === "targetReached") {
-    return DIMENSION_RANK[a.dimension] - DIMENSION_RANK[b.dimension];
+    return DIMENSIONS.indexOf(a.dimension) - DIMENSIONS.indexOf(b.dimension);
   }
   return 0;
 }
 
-function clampToAirspace(value: number): number {
-  if (value > AIRSPACE_BOUND_MM) return AIRSPACE_BOUND_MM;
-  if (value < -AIRSPACE_BOUND_MM) return -AIRSPACE_BOUND_MM;
+/** Clamp `value` into `[-bound, +bound]`. All operands are integers. */
+function clampStep(value: number, bound: number): number {
+  if (value > bound) return bound;
+  if (value < -bound) return -bound;
   return value;
+}
+
+/**
+ * Horizontal displacement for one tick (research R2 step 4), using the given
+ * heading and speed.
+ *
+ * Takes scalars, not an `AircraftState`: nothing named `previous` is in scope
+ * here, so there is no pre-steer value this function *could* read by mistake.
+ * The caller is responsible for passing the post-steering heading and speed —
+ * the values the tick's outcome itself reports — which is what makes "use the
+ * *new* heading and speed" (research R2) structural at the call site rather
+ * than a discipline to remember inline.
+ */
+function displace(
+  x: number,
+  y: number,
+  heading: number,
+  speed: number,
+): { readonly x: number; readonly y: number } {
+  const scaled = tickDistanceScaled(speed);
+  const { sin, cos } = sinCosMillideg(heading);
+  return {
+    x: x + quantizeHalfToEven((scaled * cos) / MS_PER_SECOND),
+    y: y + quantizeHalfToEven((scaled * sin) / MS_PER_SECOND),
+  };
 }
 
 /** Mutable scratch for one tick, so the per-aircraft pass stays readable. */
@@ -112,13 +138,6 @@ interface TickScratch {
   readonly events: WorldEngineEvent[];
   readonly exited: Set<string>;
   readonly exhausted: Set<string>;
-}
-
-/** Clamp `value` into `[-bound, +bound]`. All operands are integers. */
-function clampStep(value: number, bound: number): number {
-  if (value > bound) return bound;
-  if (value < -bound) return -bound;
-  return value;
 }
 
 /** One aircraft's outcome for the tick: its new state and its new assignments. */
@@ -183,6 +202,7 @@ function advanceAircraft(
       const climbing = targetAltitude >= altitude;
       const bound = perTickMm(
         climbing ? previous.limits.maxClimbRate : previous.limits.maxDescentRate,
+        scratch.tick,
       );
       altitude += clampStep(targetAltitude - altitude, bound);
       // Floored by the motion rule itself, so an out-of-range altitude is never
@@ -192,27 +212,21 @@ function advanceAircraft(
     }
   }
 
-  // --- Move (research R2) ---
+  // --- Move (research R2 step 4) ---
   //
-  // `speed * MS_PER_TICK` is an exact integer, so the only rounding in the whole
-  // displacement is the single division below plus the declared quantization —
-  // and both are correctly rounded IEEE operations on every platform.
+  // `displace` takes `heading`/`speed` — the locals above, already steered —
+  // never `previous.heading`/`previous.speed`.
   let x: number = previous.position.x;
   let y: number = previous.position.y;
 
   if (!frozen) {
-    const scaled = tickDistanceScaled(previous.speed);
-    x += quantizeHalfToEven((scaled * cosMillideg(previous.heading)) / MS_PER_SECOND);
-    y += quantizeHalfToEven((scaled * sinMillideg(previous.heading)) / MS_PER_SECOND);
-
-    const clampedX = clampToAirspace(x);
-    const clampedY = clampToAirspace(y);
-    if (clampedX !== x || clampedY !== y) {
+    const moved = displace(x, y, heading, speed);
+    const clampedX = clampStep(moved.x, AIRSPACE_BOUND_MM);
+    const clampedY = clampStep(moved.y, AIRSPACE_BOUND_MM);
+    if (clampedX !== moved.x || clampedY !== moved.y) {
       // Clamp rather than report an out-of-bounds position: the latter would not
       // even pass `parseWorldSnapshot`. The aircraft is flagged and frozen here;
       // what that *means* (divert, scoring) belongs to later features.
-      x = clampedX;
-      y = clampedY;
       scratch.exited.add(previous.id);
       scratch.events.push({
         kind: "airspaceExited",
@@ -220,11 +234,13 @@ function advanceAircraft(
         tick: scratch.tick,
       });
     }
+    x = clampedX;
+    y = clampedY;
   }
 
   // --- Resources (research R8) ---
   const fuelBefore = previous.fuelOrWindowRemaining;
-  const fuelAfter = fuelBefore > 0 ? fuelBefore - FUEL_DECREMENT_PER_TICK : 0;
+  const fuelAfter = nextFuel(fuelBefore);
   if (fuelBefore > 0 && fuelAfter === 0) {
     // Fires on the 1 → 0 transition only. An aircraft that starts at 0 never
     // transitions and so never raises the event.
@@ -271,8 +287,6 @@ export function advanceTick(
   };
 
   const applied: MotionCommand[] = [];
-  const rejected: CommandRejection[] = [];
-  const superseded: CommandSupersession[] = [];
 
   // --- Admission (research R6) ---
   //
@@ -280,10 +294,10 @@ export function advanceTick(
   // therefore cannot change a target, be superseded, or displace anything. Its
   // batch-mates are unaffected.
   const screening = screenCommands(previous, tick, commands);
-  rejected.push(...screening.rejected);
+  const rejected = screening.rejected;
 
   const fold = admitCommands(state.assignments, screening.admitted);
-  superseded.push(...fold.superseded);
+  const superseded = fold.superseded;
   const assignments = new Map(fold.assignments);
 
   // --- Activation, steering, motion, resources ---

@@ -5,11 +5,13 @@
 // Two rules are pinned down here, and both are about *transitions*, not states:
 //
 //   - `fuelExhausted` fires on the single tick where `fuelOrWindowRemaining`
-//     goes 1 → 0. Never earlier, never again, and never at all for an aircraft
-//     that was already at 0 — there is no transition to report. The flag in
-//     `state.exhausted` is permanent, but the event is not repeated, so every
-//     assertion below counts occurrences across a whole run rather than looking
-//     at one tick in isolation.
+//     goes from positive to 0. Never earlier, never again, and never at all for
+//     an aircraft that was already at 0 at construction — there is no
+//     transition to report, even though `state.exhausted` already carries it
+//     (seeded at construction; see `world-engine-state.test.ts`). The flag is
+//     permanent once set, but the event is not repeated, so every assertion
+//     below counts occurrences across a whole run rather than looking at one
+//     tick in isolation.
 //   - `airspaceExited` fires on the single tick where motion would leave the
 //     declared bound. The position is clamped to the boundary and the aircraft
 //     is frozen from then on. Freezing is a *motion* rule: fuel keeps ticking
@@ -20,12 +22,18 @@
 // below does) is the evidence that no out-of-bounds state is ever *reported* —
 // not merely that it is flagged.
 //
+// The fuel fixtures below are expressed in terms of `FUEL_DECREMENT_PER_TICK`
+// (aliased `D`) rather than hardcoding "1": the previous fixed literals made
+// every test here pass by construction even if the engine's floor at zero
+// only happened to work for a decrement of exactly 1 (see `ruleset.ts`'s
+// `nextFuel` and its regression test in `test/ruleset.test.ts`).
+//
 // `targetReached` is deliberately absent: convergence events belong to T014.
 import { describe, expect, it } from "vitest";
-import { AIRSPACE_BOUND_MM, type AircraftState, parseWorldSnapshot } from "@model-planes/core";
-import { createWorldEngineState, type WorldEngineState } from "../src/world-engine-state.ts";
-import { advanceTick } from "../src/world-engine.ts";
-import { DEFAULT_FUEL, type MotionCommand, aircraft, deepFreeze, snapshot } from "./fixtures.ts";
+import { AIRSPACE_BOUND_MM, parseWorldSnapshot } from "@model-planes/core";
+import { FUEL_DECREMENT_PER_TICK as D } from "../src/ruleset.ts";
+import { DEFAULT_FUEL, aircraft } from "./fixtures.ts";
+import { type TickOutcome, planeIn, run, stateOver } from "./harness.ts";
 
 // --- Local helpers -----------------------------------------------------------
 
@@ -41,50 +49,9 @@ const STEP_MM = 10_000;
 /** Ticks each run advances — comfortably past every transition under test. */
 const RUN_TICKS = 6;
 
-/** Advances one tick, unwrapping the `Result`; an error here is a test failure. */
-function advance(state: WorldEngineState, commands: readonly MotionCommand[] = []) {
-  const result = advanceTick(state, commands);
-  if (!result.ok) {
-    throw new Error(`advanceTick errored: ${result.error.field}: ${result.error.message}`);
-  }
-  return result.value;
-}
-
-/** An initial state over `fleet`, deep-frozen so any input mutation throws. */
-function stateOver(fleet: readonly AircraftState[]): WorldEngineState {
-  const created = createWorldEngineState(deepFreeze(snapshot({ aircraft: fleet })));
-  if (!created.ok) {
-    throw new Error(
-      `test invariant: fixture snapshot is contract-invalid: ${created.error.message}`,
-    );
-  }
-  return created.value;
-}
-
-/** Runs `count` ticks with no commands, returning every outcome in order. */
-function run(initial: WorldEngineState, count: number): readonly ReturnType<typeof advance>[] {
-  const outcomes: ReturnType<typeof advance>[] = [];
-  let state = initial;
-  for (let i = 0; i < count; i++) {
-    const outcome = advance(state);
-    outcomes.push(outcome);
-    state = outcome.state;
-  }
-  return outcomes;
-}
-
-/** The aircraft `id` in an outcome's snapshot — absence is a test failure. */
-function planeIn(outcome: ReturnType<typeof advance>, id: string): AircraftState {
-  const found = outcome.state.snapshot.aircraft.find((candidate) => candidate.id === id);
-  if (found === undefined) {
-    throw new Error(`test invariant: aircraft ${id} vanished from the snapshot`);
-  }
-  return found;
-}
-
 /** Indices of the outcomes carrying an event of `kind` for `id`. */
 function tickIndicesWithEvent(
-  outcomes: readonly ReturnType<typeof advance>[],
+  outcomes: readonly TickOutcome[],
   kind: "airspaceExited" | "fuelExhausted",
   id: string,
 ): readonly number[] {
@@ -94,7 +61,7 @@ function tickIndicesWithEvent(
 }
 
 /** Asserts every snapshot in a run is still accepted by the core contract. */
-function expectAllSnapshotsValid(outcomes: readonly ReturnType<typeof advance>[]): void {
+function expectAllSnapshotsValid(outcomes: readonly TickOutcome[]): void {
   for (const outcome of outcomes) {
     expect(parseWorldSnapshot(outcome.state.snapshot).ok).toBe(true);
   }
@@ -103,20 +70,27 @@ function expectAllSnapshotsValid(outcomes: readonly ReturnType<typeof advance>[]
 // --- Fuel window (FR-008) ----------------------------------------------------
 
 describe("advanceTick reports the fuel-or-time window reaching zero", () => {
-  it("decrements by one per tick and floors at zero", () => {
-    const outcomes = run(stateOver([aircraft({ fuelOrWindowRemaining: 3 })]), RUN_TICKS);
+  it("decrements by the declared amount each tick and floors at zero", () => {
+    // Starting at `2D + 1` makes the last real step a PARTIAL one — the case a
+    // literal `fuelBefore - D` would get wrong for any D > 1, since `1 - D`
+    // would go negative instead of flooring.
+    const outcomes = run(stateOver([aircraft({ fuelOrWindowRemaining: 2 * D + 1 })]), RUN_TICKS);
+    const fuel = outcomes.map((outcome) => planeIn(outcome, "AC-1").fuelOrWindowRemaining);
 
-    expect(outcomes.map((outcome) => planeIn(outcome, "AC-1").fuelOrWindowRemaining)).toEqual([
-      2, 1, 0, 0, 0, 0,
-    ]);
+    expect(fuel[0]).toBe(2 * D + 1 - D);
+    expect(fuel[1]).toBe(1);
+    expect(fuel.slice(2)).toEqual([0, 0, 0, 0]);
+    for (const value of fuel) expect(value).toBeGreaterThanOrEqual(0);
     expectAllSnapshotsValid(outcomes);
   });
 
   it("raises fuelExhausted exactly once, on the tick the window becomes zero", () => {
-    const outcomes = run(stateOver([aircraft({ fuelOrWindowRemaining: 3 })]), RUN_TICKS);
+    const outcomes = run(stateOver([aircraft({ fuelOrWindowRemaining: 2 * D + 1 })]), RUN_TICKS);
 
-    // Counted across the whole run: the event is a 1 → 0 transition report, so
-    // a second occurrence on any later tick is as wrong as an early one.
+    // Counted across the whole run: the event is a positive→0 transition
+    // report, so a second occurrence on any later tick is as wrong as an early
+    // one. The crossing tick is the partial step (1 → 0), not a clean multiple
+    // of D.
     expect(tickIndicesWithEvent(outcomes, "fuelExhausted", "AC-1")).toEqual([2]);
 
     const exhaustionTick = outcomes[2];
@@ -129,7 +103,7 @@ describe("advanceTick reports the fuel-or-time window reaching zero", () => {
   });
 
   it("flags the aircraft as exhausted from that tick onward, permanently", () => {
-    const outcomes = run(stateOver([aircraft({ fuelOrWindowRemaining: 3 })]), RUN_TICKS);
+    const outcomes = run(stateOver([aircraft({ fuelOrWindowRemaining: 2 * D + 1 })]), RUN_TICKS);
 
     expect(outcomes.map((outcome) => outcome.state.exhausted.has("AC-1"))).toEqual([
       false,
@@ -142,7 +116,7 @@ describe("advanceTick reports the fuel-or-time window reaching zero", () => {
   });
 
   it("keeps an exhausted aircraft flying — the flag is not a freeze", () => {
-    const outcomes = run(stateOver([aircraft({ fuelOrWindowRemaining: 3 })]), RUN_TICKS);
+    const outcomes = run(stateOver([aircraft({ fuelOrWindowRemaining: 2 * D + 1 })]), RUN_TICKS);
 
     // Dead reckoning is untouched by exhaustion: tick n still sits at n steps.
     expect(outcomes.map((outcome) => planeIn(outcome, "AC-1").position.x)).toEqual(
@@ -151,11 +125,14 @@ describe("advanceTick reports the fuel-or-time window reaching zero", () => {
     expect(outcomes.some((outcome) => outcome.state.exited.has("AC-1"))).toBe(false);
   });
 
-  it("never raises the event for an aircraft that started at zero", () => {
+  it("never raises the event for an aircraft that started at zero, though the flag is seeded", () => {
     const outcomes = run(stateOver([aircraft({ fuelOrWindowRemaining: 0 })]), RUN_TICKS);
 
-    // No 1 → 0 transition ever happens, so there is nothing to report.
+    // No transition ever happens, so there is nothing to report — but the flag
+    // is already true from the first outcome, seeded at construction, not by a
+    // transition this run produced.
     expect(tickIndicesWithEvent(outcomes, "fuelExhausted", "AC-1")).toEqual([]);
+    expect(outcomes.every((outcome) => outcome.state.exhausted.has("AC-1"))).toBe(true);
     expect(outcomes.map((outcome) => planeIn(outcome, "AC-1").fuelOrWindowRemaining)).toEqual([
       0, 0, 0, 0, 0, 0,
     ]);
@@ -223,7 +200,7 @@ describe("advanceTick clamps, flags, and freezes an aircraft leaving the airspac
 
     // The freeze is a motion rule, not a resource rule — the window still runs.
     const fuelPerTick = outcomes.map((outcome) => planeIn(outcome, "AC-1").fuelOrWindowRemaining);
-    expect(fuelPerTick).toEqual([1, 2, 3, 4, 5, 6].map((tick) => DEFAULT_FUEL - tick));
+    expect(fuelPerTick).toEqual([1, 2, 3, 4, 5, 6].map((tick) => DEFAULT_FUEL - tick * D));
   });
 
   it("keeps every reported snapshot contract-valid across the crossing", () => {
