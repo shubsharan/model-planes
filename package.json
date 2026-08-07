@@ -1,0 +1,31 @@
+{
+  "name": "model-planes",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "check-types": "turbo run check-types",
+    "test": "turbo run test",
+    "lint": "oxlint --no-error-on-unmatched-pattern .",
+    "lint:fix": "oxlint --fix --no-error-on-unmatched-pattern .",
+    "format": "oxfmt --check --no-error-on-unmatched-pattern",
+    "format:fix": "oxfmt --no-error-on-unmatched-pattern .",
+    "quality": "turbo run //#lint //#format",
+    "quality:fix": "turbo run //#lint:fix //#format:fix",
+    "speckit:sync": "bash .specify/scripts/bash/sync-docs.sh",
+    "speckit:refresh-status": "bash .specify/scripts/bash/sync-workflow.sh",
+    "speckit:check": "bash .specify/scripts/bash/check-workflow.sh",
+    "speckit:test": "bash .specify/tests/workflow.sh",
+    "verify": "pnpm lint && pnpm check-types && pnpm test && pnpm speckit:test && pnpm speckit:check"
+  },
+  "devDependencies": {
+    "oxfmt": "^0.61.0",
+    "oxlint": "^1.76.0",
+    "turbo": "^2.10.8",
+    "typescript": "7.0.2"
+  },
+  "engines": {
+    "node": ">=25"
+  },
+  "packageManager": "pnpm@11.18.0"
+}

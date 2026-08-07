@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0",
+  "workflows": {
+    "speckit": {
+      "name": "Full Feature Cycle",
+      "version": "3.0.0",
+      "description": "Runs specify \u2192 clarify \u2192 plan \u2192 checklist \u2192 tasks \u2192 analyze \u2192 review \u2192 implement",
+      "source": "local",
+      "installed_at": "2026-08-01T07:17:17.071654+00:00",
+      "updated_at": "2026-08-03T19:33:55.783882+00:00"
+    }
+  }
+}

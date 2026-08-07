@@ -1,0 +1,56 @@
+schema_version: "1.0"
+
+extension:
+  id: workflow
+  name: "Spec Kit Workflow"
+  version: "2.0.0"
+  description: "Additive epic, ADR, branch, status, and generated-document workflow checks"
+  author: model-planes
+  license: MIT
+
+requires:
+  speckit_version: ">=0.8.8"
+
+provides:
+  commands:
+    - name: speckit.workflow.sync
+      file: commands/speckit.workflow.sync.md
+      description: "Synchronize generated epic and ADR documentation"
+    - name: speckit.workflow.check
+      file: commands/speckit.workflow.check.md
+      description: "Validate feature, epic, ADR, branch, status, and documentation invariants"
+
+hooks:
+  before_implement:
+    command: speckit.workflow.check
+    optional: false
+    description: "Require a valid feature workflow before implementation"
+  after_specify:
+    command: speckit.workflow.sync
+    optional: false
+    description: "Refresh parent epic documentation after specification"
+  after_plan:
+    command: speckit.workflow.sync
+    optional: false
+    description: "Refresh feature references after planning"
+  after_implement:
+    command: speckit.workflow.sync
+    optional: false
+    description: "Keep feature and epic status synchronized"
+  after_analyze:
+    command: speckit.workflow.check
+    optional: false
+    description: "Validate references and generated documentation after analysis"
+  after_epic:
+    command: speckit.workflow.sync
+    optional: false
+    description: "Refresh roadmap and epic feature lists"
+  after_adr:
+    command: speckit.workflow.sync
+    optional: false
+    description: "Refresh the ADR index"
+
+tags:
+  - workflow
+  - epics
+  - adrs

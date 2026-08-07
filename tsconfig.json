@@ -1,0 +1,12 @@
+{
+  "//": "Solution file: holds no sources of its own, references every workspace package so `tsc -b` builds the whole graph in dependency order.",
+  "files": [],
+  "references": [
+    { "path": "packages/core" },
+    { "path": "packages/sim" },
+    { "path": "packages/scenarios" },
+    { "path": "packages/controllers" },
+    { "path": "packages/harness" },
+    { "path": "packages/cli" }
+  ]
+}

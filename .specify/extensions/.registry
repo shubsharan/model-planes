@@ -1,0 +1,49 @@
+{
+  "schema_version": "1.0",
+  "extensions": {
+    "git": {
+      "version": "1.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:899a37699e14819d4e888f10006804c7460e0fd5d68e9a19692649877f85ab1e",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "agy": [
+          "speckit.git.feature",
+          "speckit.git.validate",
+          "speckit.git.remote",
+          "speckit.git.initialize",
+          "speckit.git.commit"
+        ],
+        "codex": [
+          "speckit.git.feature",
+          "speckit.git.validate",
+          "speckit.git.remote",
+          "speckit.git.initialize",
+          "speckit.git.commit"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-08-01T07:17:17.064598+00:00"
+    },
+    "workflow": {
+      "version": "2.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:b57c806dfbf2383cdc9d1adf05a90e31e3eff20978737aba2b8e97affe3265e3",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "agy": [
+          "speckit.workflow.sync",
+          "speckit.workflow.check"
+        ],
+        "codex": [
+          "speckit.workflow.sync",
+          "speckit.workflow.check"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-08-03T19:33:55.783882+00:00"
+    }
+  }
+}

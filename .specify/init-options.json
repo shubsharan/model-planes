@@ -1,0 +1,12 @@
+{
+  "ai": "codex",
+  "ai_skills": true,
+  "feature_dir": "docs/features",
+  "epic_dir": "docs/epics",
+  "adr_dir": "docs/adrs",
+  "context_file": "AGENTS.md",
+  "here": true,
+  "integration": "codex",
+  "script": "sh",
+  "speckit_version": "0.8.8"
+}
