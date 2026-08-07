@@ -8,9 +8,12 @@
   },
   "scripts": {
     "check-types": "tsc --noEmit",
-    "test": "echo \"@model-planes/sim: no tests yet\""
+    "test": "vitest run"
   },
   "dependencies": {
     "@model-planes/core": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.10"
   }
 }

@@ -95,8 +95,22 @@ const UNIT_TABLE: Readonly<Record<string, UnitDef>> = {
   fuelUnit: { multiplyBy: 1, divideBy: 1 },
 };
 
+/** `Number.MAX_SAFE_INTEGER`, as a `bigint`, for range-checking a final result. */
+const MAX_SAFE_INTEGER = BigInt(Number.MAX_SAFE_INTEGER);
+
 /**
- * The conversion as an exact rational `numerator / denominator`.
+ * Whether `value`'s magnitude fits in the exact-integer range ADR 0001
+ * requires every base-unit magnitude to stay inside.
+ */
+function isSafeMagnitude(value: bigint): boolean {
+  return (value < 0n ? -value : value) <= MAX_SAFE_INTEGER;
+}
+
+/**
+ * The conversion as an exact rational `numerator / denominator`, in `bigint`
+ * so the arithmetic below cannot overflow the way `number` arithmetic can —
+ * only the final result is range-checked against ADR 0001, not every
+ * intermediate.
  *
  * Scaling in binary floating point manufactures residue that has nothing to do
  * with the quantity: `1.001 * 1000` is `1000.9999999999999`, so a value that is
@@ -107,7 +121,7 @@ const UNIT_TABLE: Readonly<Record<string, UnitDef>> = {
 function asExactRatio(
   value: number,
   def: UnitDef,
-): Result<{ numerator: number; denominator: number }> {
+): Result<{ numerator: bigint; denominator: bigint }> {
   if (!Number.isFinite(value)) {
     return err(schemaError("value", "not-integer", "quantity.value must be a finite number"));
   }
@@ -121,31 +135,16 @@ function asExactRatio(
   const exponent = exponentText === undefined ? 0 : Number(exponentText);
 
   // Choose `decimals` so that `value === mantissa / 10^decimals` with an
-  // integral mantissa: the shift below is non-negative exactly when
-  // `decimals >= fractionPart.length - exponent`.
+  // integral mantissa: `shift` below is non-negative exactly when
+  // `decimals >= fractionPart.length - exponent`, which is how `decimals` is
+  // chosen — so `10n ** BigInt(shift)` is always a whole-number power of ten.
   const decimals = Math.max(0, fractionPart.length - exponent);
-  const mantissa = Number(
-    `${integerPart}${fractionPart}e${exponent - fractionPart.length + decimals}`,
-  );
-  const numerator = mantissa * def.multiplyBy;
-  const denominator = 10 ** decimals * def.divideBy;
+  const shift = exponent - fractionPart.length + decimals;
+  const digits = BigInt(`${integerPart}${fractionPart}` || "0");
+  const mantissa = digits * 10n ** BigInt(shift);
 
-  // ADR 0001 relies on every base-unit magnitude staying inside the exact
-  // integer range; past it, integer arithmetic silently stops being exact, so
-  // reject rather than return a value we cannot stand behind.
-  if (
-    !Number.isSafeInteger(mantissa) ||
-    !Number.isSafeInteger(numerator) ||
-    !Number.isSafeInteger(denominator)
-  ) {
-    return err(
-      schemaError(
-        "value",
-        "out-of-range",
-        `converting ${value} exceeds the exact integer range (ADR 0001)`,
-      ),
-    );
-  }
+  const numerator = mantissa * BigInt(def.multiplyBy);
+  const denominator = 10n ** BigInt(decimals) * BigInt(def.divideBy);
   return ok({ numerator, denominator });
 }
 
@@ -187,7 +186,7 @@ export function toBaseUnit(quantity: Quantity): Result<number> {
   if (!ratio.ok) return err(ratio.error);
   const { numerator, denominator } = ratio.value;
 
-  if (numerator % denominator !== 0) {
+  if (numerator % denominator !== 0n) {
     return err(
       schemaError(
         "value",
@@ -196,7 +195,21 @@ export function toBaseUnit(quantity: Quantity): Result<number> {
       ),
     );
   }
-  return ok(numerator / denominator);
+
+  const result = numerator / denominator;
+  // ADR 0001 relies on every base-unit magnitude staying inside the exact
+  // integer range; past it, `number` arithmetic silently stops being exact, so
+  // reject rather than return a value we cannot stand behind.
+  if (!isSafeMagnitude(result)) {
+    return err(
+      schemaError(
+        "value",
+        "out-of-range",
+        `converting ${quantity.value} exceeds the exact integer range (ADR 0001)`,
+      ),
+    );
+  }
+  return ok(Number(result));
 }
 
 /**
@@ -220,29 +233,33 @@ export function quantizeToBaseUnit(quantity: Quantity): Result<number> {
 
   // Quantize the magnitude, then reapply the sign: half-to-even is symmetric
   // about zero, and working on a non-negative pair keeps the floor division
-  // and the parity tie-break free of sign edge cases.
-  const negative = numerator < 0;
-  const magnitude = Math.abs(numerator);
-  let quotient = Math.floor(magnitude / denominator);
-  let remainder = magnitude - quotient * denominator;
-  // Float division can land a hair either side of the true quotient; correct
-  // it against the exact remainder so the parity tie-break below is reliable.
-  if (remainder < 0) {
-    quotient -= 1;
-    remainder += denominator;
-  } else if (remainder >= denominator) {
-    quotient += 1;
-    remainder -= denominator;
-  }
+  // and the parity tie-break free of sign edge cases. `bigint` division
+  // truncates toward zero, which is floor division here since both operands
+  // are non-negative — no float-division correction step is needed.
+  const negative = numerator < 0n;
+  const magnitude = negative ? -numerator : numerator;
+  const quotient = magnitude / denominator;
+  const remainder = magnitude - quotient * denominator;
 
-  const doubled = remainder * 2;
+  const doubled = remainder * 2n;
   const rounded =
-    doubled > denominator || (doubled === denominator && quotient % 2 !== 0)
-      ? quotient + 1
+    doubled > denominator || (doubled === denominator && quotient % 2n !== 0n)
+      ? quotient + 1n
       : quotient;
 
   // `-1 * 0` is `-0`, which is not a canonical integer (ADR 0001).
-  return ok(negative && rounded !== 0 ? -rounded : rounded);
+  const signed = negative && rounded !== 0n ? -rounded : rounded;
+
+  if (!isSafeMagnitude(signed)) {
+    return err(
+      schemaError(
+        "value",
+        "out-of-range",
+        `converting ${quantity.value} exceeds the exact integer range (ADR 0001)`,
+      ),
+    );
+  }
+  return ok(Number(signed));
 }
 
 /**
