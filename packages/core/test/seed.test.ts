@@ -20,6 +20,14 @@ describe("reproducible seed derivation (US3, FR-010)", () => {
     expect(wind).not.toEqual(jitter);
   });
 
+  // Regression: a string label that looks like the numeric-index encoding
+  // must not collide with the derivation for that actual index.
+  it("does not collide a string label with a numeric label of matching text", () => {
+    const stringLabel = deriveSubSeed(seed, "#3");
+    const numericLabel = deriveSubSeed(seed, 3);
+    expect(stringLabel).not.toEqual(numericLabel);
+  });
+
   it("derives different sub-seeds for different indices", () => {
     const a = deriveSubSeed(seed, 0);
     const b = deriveSubSeed(seed, 1);

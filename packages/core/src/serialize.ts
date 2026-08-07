@@ -45,6 +45,16 @@ function canonicalize(value: unknown, path: string): string {
     return `[${value.map((item, i) => canonicalize(item, `${path}[${i}]`)).join(",")}]`;
   }
   if (kind === "object") {
+    // `Date`/`Map`/`Set`/typed arrays are `typeof "object"` but have no own
+    // enumerable keys, so without this check they would silently canonicalize
+    // to `{}` instead of being rejected — quietly destroying the value rather
+    // than honoring the "guaranteed to persist and replay" contract.
+    const proto = Object.getPrototypeOf(value);
+    if (proto !== Object.prototype && proto !== null) {
+      throw new SerializationError(
+        schemaError(path, "wrong-kind", `${path} must be a plain object (ADR 0001)`),
+      );
+    }
     const obj = value as Record<string, unknown>;
     const keys = Object.keys(obj).sort();
     const entries = keys.map(
@@ -107,6 +117,12 @@ export function requireCanonicalRecord(
  * Parse bytes produced by `serialize`. Rejects input whose top-level
  * `schemaVersion` differs from `SCHEMA_VERSION` (FR-007, SC-004), and
  * rejects input that isn't valid JSON.
+ *
+ * `T` is an unchecked cast, not a validated shape — this only confirms the
+ * bytes are JSON and, if present, that `schemaVersion` matches. A caller
+ * that needs a real `Trace`/`DecisionRecord`/etc. must run the result
+ * through the matching `parseX` function (e.g. `parseTrace`), which is the
+ * only thing that actually validates the shape.
  */
 export function deserialize<T = unknown>(bytes: Uint8Array): Result<T> {
   let parsed: unknown;

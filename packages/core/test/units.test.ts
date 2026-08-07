@@ -49,6 +49,19 @@ describe("canonical unit conversions (US3, FR-009)", () => {
     expect(result.ok).toBe(false);
   });
 
+  // Regression: UNIT_TABLE is a plain object literal, so a bare index lookup
+  // walks the prototype chain — a unit name that collides with an
+  // Object.prototype member (e.g. "toString") must still be rejected as
+  // unrecognized, not silently resolve to a prototype value.
+  it.each(["toString", "constructor", "valueOf", "hasOwnProperty", "__proto__"])(
+    "rejects %p as an unrecognized unit rather than resolving it via the prototype chain",
+    (unit) => {
+      expect(toBaseUnit({ value: 5, unit }).ok).toBe(false);
+      const result = fromBaseUnit(5, unit);
+      expect(result.ok).toBe(false);
+    },
+  );
+
   // Regression: binary floating-point scaling computes 1.001 * 1000 as
   // 1000.9999999999999, which made an exactly-representable quantity read as
   // inexact. The conversion runs on the decimal mantissa in integer

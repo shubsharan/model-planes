@@ -216,6 +216,18 @@ describe("opaque payloads are validated against the canonical domain (FR-008)", 
     expect(parseDecisionRecord({ ...record, messages: [{ tokens: 1.5 }] }).ok).toBe(false);
   });
 
+  // Regression: Date/Map/Set are `typeof "object"` with no own enumerable
+  // keys, so without a prototype check they would pass validation and then
+  // silently canonicalize to `{}` — defeating the very guarantee this
+  // describe block exists to enforce.
+  it.each([
+    ["a Date", { when: new Date(0) }],
+    ["a Map", { lookup: new Map([["a", 1]]) }],
+    ["a Set", { tags: new Set([1, 2]) }],
+  ])("rejects margins containing %s", (_label, margins) => {
+    expect(parseDecisionRecord({ ...buildSampleRecord(), margins }).ok).toBe(false);
+  });
+
   it("accepts nested integers, strings, booleans, null, and arrays", () => {
     const margins = { sep: 300_000, tag: "tight", breached: false, note: null, series: [1, 2, 3] };
     expect(parseDecisionRecord({ ...buildSampleRecord(), margins }).ok).toBe(true);

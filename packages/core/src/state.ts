@@ -5,6 +5,7 @@
 // clearance, and runway occupancy, are derived downstream from position,
 // geometry, and the command log (see data-model.md "State transitions").
 import {
+  SCHEMA_VERSION,
   type Result,
   err,
   ok,
@@ -27,7 +28,6 @@ import {
   asMillidegPerTick,
   asTick,
 } from "./units.ts";
-import { SCHEMA_VERSION } from "./validate.ts";
 
 /** Half-width of the bounded terminal airspace, in mm (ADR 0001: ~100 km radius). */
 export const AIRSPACE_BOUND_MM = 100_000_000;

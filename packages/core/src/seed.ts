@@ -36,6 +36,9 @@ function fnv1a(input: string): number {
  * on every run and process (FR-010, SC-005).
  */
 export function deriveSubSeed(seed: Seed, label: string | number): Seed {
-  const labelKey = typeof label === "number" ? `#${label}` : label;
+  // Disjoint prefixes per branch, not a bare `label` for strings: without
+  // this a string label starting with the numeric-index marker (`"#3"`)
+  // would collide with the derivation for the index `3`.
+  const labelKey = typeof label === "number" ? `n:${label}` : `s:${label}`;
   return { root: fnv1a(`${seed.root}:${labelKey}`) };
 }

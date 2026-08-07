@@ -150,6 +150,9 @@ function asExactRatio(
 }
 
 function resolveUnit(unit: string): Result<UnitDef> {
+  // `unit === undefined || unit === null` is unreachable under the `string`
+  // parameter type, but this is a public library boundary a JS (non-TS)
+  // caller can violate, so the runtime guard stays.
   if (unit === "" || unit === undefined || unit === null) {
     return err(
       schemaError(
@@ -159,7 +162,10 @@ function resolveUnit(unit: string): Result<UnitDef> {
       ),
     );
   }
-  const def = UNIT_TABLE[unit];
+  // `Object.hasOwn` — not a bare index — so a unit name that collides with an
+  // `Object.prototype` member (`"toString"`, `"constructor"`, ...) is treated
+  // as unrecognized rather than silently resolving to a prototype value.
+  const def = Object.hasOwn(UNIT_TABLE, unit) ? UNIT_TABLE[unit] : undefined;
   if (def === undefined) {
     return err(schemaError("unit", "wrong-kind", `unrecognized or ambiguous unit "${unit}"`));
   }
@@ -246,17 +252,13 @@ export function quantizeToBaseUnit(quantity: Quantity): Result<number> {
  * that re-enters state, a command, or the trace (ADR 0001).
  */
 export function fromBaseUnit(value: number, toUnit: string): Result<number> {
-  if (toUnit === "" || toUnit === undefined || toUnit === null) {
-    return err(
-      schemaError("unit", "missing", "toUnit is required — there is no implicit default unit"),
-    );
-  }
-  const def = UNIT_TABLE[toUnit];
-  if (def === undefined) {
-    return err(schemaError("unit", "wrong-kind", `unrecognized or ambiguous unit "${toUnit}"`));
-  }
+  // Routed through the same `resolveUnit` as `toBaseUnit`/`quantizeToBaseUnit`
+  // — a separate lookup here previously let this path resolve a unit name
+  // that collides with an `Object.prototype` member and return `ok(NaN)`.
+  const def = resolveUnit(toUnit);
+  if (!def.ok) return err(def.error);
   if (!Number.isInteger(value)) {
     return err(schemaError("value", "not-integer", "a base-unit value must be an integer"));
   }
-  return ok((value * def.divideBy) / def.multiplyBy);
+  return ok((value * def.value.divideBy) / def.value.multiplyBy);
 }
