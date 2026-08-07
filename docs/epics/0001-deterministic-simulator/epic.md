@@ -139,6 +139,6 @@ to a byte-identical result.
 <!-- speckit:generated:epic-features START -->
 
 - [Core Contracts](../../features/0001-core-contracts/spec.md) — Active
-- [Aircraft World Engine](../../features/0002-aircraft-world-engine/spec.md) — Pending
+- [Aircraft World Engine](../../features/0002-aircraft-world-engine/spec.md) — Active
 
 <!-- speckit:generated:epic-features END -->

@@ -68,6 +68,10 @@ export interface CommandSupersession {
   readonly by: MotionCommand;
 }
 
+/** The dimension a `targetReached` event refers to. Named so a caller can switch
+ *  on it without restating the union. */
+export type TargetDimension = "heading" | "altitude" | "speed";
+
 export type WorldEngineEvent =
   | { readonly kind: "airspaceExited"; readonly aircraftId: string; readonly tick: Tick }
   | { readonly kind: "fuelExhausted"; readonly aircraftId: string; readonly tick: Tick }
@@ -75,7 +79,7 @@ export type WorldEngineEvent =
       readonly kind: "targetReached";
       readonly aircraftId: string;
       readonly tick: Tick;
-      readonly dimension: "heading" | "altitude" | "speed";
+      readonly dimension: TargetDimension;
     };
 
 export interface TickOutcome {
