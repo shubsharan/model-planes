@@ -1,7 +1,7 @@
 // US1: malformed/incomplete AircraftState, RunwayState, and Command values
 // are rejected rather than defaulted (FR-011, SC-006 for these entities).
 import { describe, expect, it } from "vitest";
-import { parseCommand, parseWorldSnapshot } from "../src/index.js";
+import { parseCommand, parseWorldSnapshot } from "../src/index.ts";
 
 const validAircraft = {
   id: "AC1",

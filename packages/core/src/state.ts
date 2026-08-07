@@ -12,9 +12,9 @@ import {
   requireRange,
   requireUniqueIds,
   schemaError,
-} from "./validate.js";
-import { type Mm, type Millideg, type MmPerSec, type MillidegPerTick, type Tick, asMm, asMillideg, asMmPerSec, asMillidegPerTick, asTick } from "./units.js";
-import { SCHEMA_VERSION } from "./validate.js";
+} from "./validate.ts";
+import { type Mm, type Millideg, type MmPerSec, type MillidegPerTick, type Tick, asMm, asMillideg, asMmPerSec, asMillidegPerTick, asTick } from "./units.ts";
+import { SCHEMA_VERSION } from "./validate.ts";
 
 /** Half-width of the bounded terminal airspace, in mm (ADR 0001: ~100 km radius). */
 export const AIRSPACE_BOUND_MM = 100_000_000;

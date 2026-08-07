@@ -4,7 +4,7 @@
 // (SC-005). Uses a pure integer hash — no Math.random, no Date.now, no
 // platform-dependent transcendental functions — so the result is identical
 // across runs and processes by construction.
-import { err, ok, requireInteger, schemaError, type Result } from "./validate.js";
+import { err, ok, requireInteger, schemaError, type Result } from "./validate.ts";
 
 /** The reproducible randomness source for a run. */
 export interface Seed {

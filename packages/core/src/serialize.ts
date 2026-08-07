@@ -5,7 +5,7 @@
 // deserialize round trip reproduces an identical value. `deserialize`
 // additionally rejects a value whose top-level `schemaVersion` differs from
 // `SCHEMA_VERSION` (FR-007, SC-004).
-import { SCHEMA_VERSION, SchemaValidationError, err, ok, schemaError, type Result } from "./validate.js";
+import { SCHEMA_VERSION, SchemaValidationError, err, ok, schemaError, type Result } from "./validate.ts";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);

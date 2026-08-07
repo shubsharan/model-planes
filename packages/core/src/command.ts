@@ -4,8 +4,8 @@
 // every command is one of the fixed CommandKind shapes below, each carrying
 // the observation timestamp it was based on and the effective time it
 // applies (FR-003).
-import { type Millideg, type Mm, type MmPerSec, type Tick, asTick } from "./units.js";
-import { type Result, err, ok, requireInteger, schemaError } from "./validate.js";
+import { type Millideg, type Mm, type MmPerSec, type Tick, asTick } from "./units.ts";
+import { type Result, err, ok, requireInteger, schemaError } from "./validate.ts";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);

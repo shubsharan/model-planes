@@ -12,8 +12,8 @@ import {
   parseSeed,
   parseTrace,
   parseWorldSnapshot,
-} from "../src/index.js";
-import { buildSampleRecord, buildSampleTrace } from "./fixtures/sample-trace.js";
+} from "../src/index.ts";
+import { buildSampleRecord, buildSampleTrace } from "./fixtures/sample-trace.ts";
 
 describe("consolidated malformed-input rejection (FR-011, SC-006)", () => {
   it("rejects AircraftPerformanceLimits where minSpeed exceeds maxSpeed", () => {

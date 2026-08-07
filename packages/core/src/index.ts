@@ -10,7 +10,7 @@ export {
   type SchemaErrorReason,
   SchemaValidationError,
   type Result,
-} from "./validate.js";
+} from "./validate.ts";
 
 export {
   MS_PER_TICK,
@@ -27,7 +27,7 @@ export {
   asMillidegPerTick,
   fromBaseUnit,
   toBaseUnit,
-} from "./units.js";
+} from "./units.ts";
 
 // --- User Story 1: state + command vocabulary --------------------------------
 export {
@@ -48,7 +48,7 @@ export {
   parseSeparationRequirement,
   parseVec3,
   parseWorldSnapshot,
-} from "./state.js";
+} from "./state.ts";
 
 export {
   COMMAND_KINDS,
@@ -64,7 +64,7 @@ export {
   goAround,
   hold,
   parseCommand,
-} from "./command.js";
+} from "./command.ts";
 
 // --- User Story 2: trace/record schema + serialization -----------------------
 export {
@@ -77,9 +77,9 @@ export {
   parseDecisionRecord,
   parseIntervention,
   parseTrace,
-} from "./trace.js";
+} from "./trace.ts";
 
-export { SerializationError, deserialize, serialize } from "./serialize.js";
+export { SerializationError, deserialize, serialize } from "./serialize.ts";
 
 // --- User Story 3: units (conversions above) + seeds --------------------------
-export { type Seed, deriveSubSeed, parseSeed } from "./seed.js";
+export { type Seed, deriveSubSeed, parseSeed } from "./seed.ts";

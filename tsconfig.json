@@ -1,12 +1,6 @@
 {
-  "//": "Solution file: holds no sources of its own, references every workspace package so `tsc -b` builds the whole graph in dependency order.",
-  "files": [],
-  "references": [
-    { "path": "packages/core" },
-    { "path": "packages/sim" },
-    { "path": "packages/scenarios" },
-    { "path": "packages/controllers" },
-    { "path": "packages/harness" },
-    { "path": "packages/cli" }
-  ]
+  "//": "Root editor config for loose root-level files (e.g. vitest.config.mts). Each package type-checks independently via its own tsconfig.json — there is no project-reference build graph, since packages resolve each other's types directly from source (see tsconfig.base.json: noEmit).",
+  "extends": "./tsconfig.base.json",
+  "include": ["*.mts", "*.ts"],
+  "exclude": ["packages"]
 }

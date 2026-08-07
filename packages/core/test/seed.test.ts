@@ -3,7 +3,7 @@
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { deriveSubSeed, type Seed } from "../src/index.js";
+import { deriveSubSeed, type Seed } from "../src/index.ts";
 
 describe("reproducible seed derivation (US3, FR-010)", () => {
   const seed: Seed = { root: 42 };

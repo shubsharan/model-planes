@@ -2,8 +2,8 @@
 // equality, byte-identical output across repeated serializations, and
 // version-mismatch rejection on read (SC-002, SC-004; FR-007, FR-008).
 import { describe, expect, it } from "vitest";
-import { SCHEMA_VERSION, deserialize, serialize } from "../src/index.js";
-import { buildSampleTrace } from "./fixtures/sample-trace.js";
+import { SCHEMA_VERSION, deserialize, serialize } from "../src/index.ts";
+import { buildSampleTrace } from "./fixtures/sample-trace.ts";
 
 describe("canonical deterministic serialization (US2, FR-007, FR-008)", () => {
   it("round-trips: deserialize(serialize(v)) deep-equals v (SC-002)", () => {

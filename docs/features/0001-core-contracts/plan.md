@@ -20,9 +20,9 @@ verified traces) and EDC-003 (immutable observed-vs-applied record).
 ## Technical Context
 
 - **Language/Version**: TypeScript 7.0.2, ESM (`"type": "module"`), `nodenext`; Node ≥ 25.
-- **Primary Dependencies**: None at runtime (`core` is the dependency sink). Dev: `tsc -b`, oxlint/oxfmt, Vitest.
+- **Primary Dependencies**: None at runtime (`core` is the dependency sink). Dev: `tsc --noEmit` (type-check only — Node runs `src/*.ts` directly at runtime, no compile step), oxlint/oxfmt, Vitest.
 - **Storage**: N/A — in-memory contracts; serialization produces bytes consumers persist elsewhere.
-- **Testing**: Vitest, run via each package's `test` script (`vitest run`) under Turbo, with a shared workspace `vitest.config.ts`. Vitest transforms TS/ESM directly, so specs run against `src`; `test` still `dependsOn ^build` (a no-op for the sink `core`). Vitest is added as a workspace dev dependency.
+- **Testing**: Vitest, run via each package's `test` script (`vitest run`) under Turbo, with a shared workspace `vitest.config.mts`. Vitest transforms TS/ESM directly, so specs run against `src`. Vitest is added as a workspace dev dependency.
 - **Target Platform**: Node ≥ 25 (library, consumed in-process by workspace packages).
 - **Project Type**: Library (workspace package `@model-planes/core`).
 - **Performance Goals**: Not latency-bound; serialize/deserialize/validate are lightweight per-decision operations. Determinism is the hard requirement, not throughput.
@@ -85,7 +85,7 @@ docs/features/0001-core-contracts/
 
 ```text
 packages/core/
-├── package.json         # @model-planes/core (exists; add node:test `test` script)
+├── package.json         # @model-planes/core (exists; exports "." -> ./src/index.ts directly)
 ├── tsconfig.json        # extends tsconfig.base (exists)
 ├── src/
 │   ├── index.ts         # public barrel — re-exports the surface in contracts/public-api.md
@@ -103,15 +103,25 @@ packages/core/
     └── validate.test.ts     # malformed input rejected (SC-006)
 
 # workspace root (added by this feature's setup)
-vitest.config.ts         # shared Vitest config
+vitest.config.mts        # shared Vitest config
 ```
 
 **Structure Decision**: Extend the existing `packages/core` scaffold in place (it is the
 dependency sink defined in [architecture.md](../../architecture.md)). One module per
 contract concern under `src/`, a single public barrel `src/index.ts`, and Vitest specs
 under `test/`. Vitest is added as a workspace dev dependency with a shared root
-`vitest.config.ts`, and `@model-planes/core`'s `test` script runs `vitest run`. No new
+`vitest.config.mts`, and `@model-planes/core`'s `test` script runs `vitest run`. No new
 package, no runtime dependency in `core`.
+
+Workspace-wide (not specific to this feature, decided during implementation): every
+package's `tsc` build step was dropped in favor of running `src/*.ts` directly — the
+project targets Node ≥ 25 only, is entirely unpublished (`private: true`), and Vitest
+already ran specs against `src` directly from the start (see Testing above). Package
+`exports`/`main`/`bin` fields point straight at `./src/index.ts`; `tsc --noEmit` (backed
+by TypeScript 7's native compiler) is a pure type-check gate, with no `dist/` output and
+no `tsconfig.tsbuildinfo` to track. Relative imports use real `.ts` extensions
+(`allowImportingTsExtensions`) rather than the `nodenext` convention of writing `.js` to
+mean a compiled sibling — since nothing compiles, that indirection no longer applies.
 
 ## Complexity Tracking
 
@@ -135,7 +145,7 @@ stays in this feature directory rather than being duplicated into project docume
 
 ## Verification
 
-- `pnpm --filter @model-planes/core build && pnpm --filter @model-planes/core test` — provider-free; Vitest specs pass.
+- `pnpm --filter @model-planes/core build && pnpm --filter @model-planes/core test` — provider-free; Vitest specs pass. (`build` is now `tsc --noEmit`, i.e. type-check only — there is no compiled output to build.)
 - Determinism contract: round-trip equality, byte-identical serialization across repeated runs and a separate process, and version-mismatch rejection (SC-002, SC-004).
 - Attribution contract: every `DecisionRecord` exposes `proposed`, `intervention`, and `applied` independently (SC-003); seed derivation stable (SC-005); malformed input rejected (SC-006).
 - `pnpm speckit:check` passes (workflow + link validation), and the spec/plan reference the same ADR.

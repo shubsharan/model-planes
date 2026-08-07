@@ -2,8 +2,8 @@
 // proposal, `proposed`, `intervention`, and `applied` are all preserved and
 // independently retrievable (SC-003; FR-006).
 import { describe, expect, it } from "vitest";
-import { parseDecisionRecord } from "../src/index.js";
-import { buildSampleRecord } from "./fixtures/sample-trace.js";
+import { parseDecisionRecord } from "../src/index.ts";
+import { buildSampleRecord } from "./fixtures/sample-trace.ts";
 
 describe("proposed/intervention/applied attribution (US2, FR-006, SC-003)", () => {
   it("keeps the raw proposal separate from the intervention and the applied command", () => {

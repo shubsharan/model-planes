@@ -3,8 +3,8 @@
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { serialize } from "../src/index.js";
-import { buildSampleTrace } from "./fixtures/sample-trace.js";
+import { serialize } from "../src/index.ts";
+import { buildSampleTrace } from "./fixtures/sample-trace.ts";
 
 describe("cross-process byte-identical serialization (SC-002)", () => {
   it("serializes the same value to identical bytes in a separate Node process", () => {

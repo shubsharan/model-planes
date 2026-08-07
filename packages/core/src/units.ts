@@ -5,7 +5,7 @@
 // trace. Branding these as distinct number types catches mixed-unit errors
 // (e.g. passing a heading where a speed is expected) at compile time without
 // any runtime cost — the brand disappears after type erasure.
-import { type Result, err, ok, schemaError } from "./validate.js";
+import { type Result, err, ok, schemaError } from "./validate.ts";
 
 declare const brand: unique symbol;
 

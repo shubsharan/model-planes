@@ -22,7 +22,7 @@ import {
   parseWorldSnapshot,
   type Command,
   type WorldSnapshot,
-} from "../src/index.js";
+} from "../src/index.ts";
 
 function buildSnapshot(): WorldSnapshot {
   const raw = {

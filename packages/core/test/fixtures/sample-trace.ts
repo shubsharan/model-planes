@@ -11,7 +11,7 @@ import {
   type DecisionRecord,
   type Trace,
   type WorldSnapshot,
-} from "../../src/index.js";
+} from "../../src/index.ts";
 
 export function buildSampleSnapshot(): WorldSnapshot {
   return parseWorldSnapshot({

@@ -4,10 +4,10 @@
 // actually applied are always distinct fields — never collapsed into a
 // diff — so a safety filter can never make a controller look safer than it
 // was (FR-006, SC-003; research.md R5).
-import { parseCommand, type Command } from "./command.js";
-import { parseAircraftState, parseRunwayState, parseWorldSnapshot } from "./state.js";
-import type { AircraftState, RunwayState, WorldSnapshot } from "./state.js";
-import { SCHEMA_VERSION, err, ok, requireInteger, schemaError, type Result } from "./validate.js";
+import { parseCommand, type Command } from "./command.ts";
+import { parseAircraftState, parseRunwayState, parseWorldSnapshot } from "./state.ts";
+import type { AircraftState, RunwayState, WorldSnapshot } from "./state.ts";
+import { SCHEMA_VERSION, err, ok, requireInteger, schemaError, type Result } from "./validate.ts";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);

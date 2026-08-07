@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "bin": {
-    "model-planes": "./dist/index.js"
+    "model-planes": "./src/index.ts"
   },
   "scripts": {
-    "build": "tsc -b",
+    "build": "tsc --noEmit",
     "check-types": "tsc --noEmit",
     "test": "echo \"@model-planes/cli: no tests yet\"",
     "dev": "echo \"@model-planes/cli: no dev entrypoint yet\""

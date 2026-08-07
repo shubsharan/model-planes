@@ -2,7 +2,7 @@
 // is exact; supply a quantity with no unit and confirm rejection (spec US3
 // Independent Test; FR-009, SC-006).
 import { describe, expect, it } from "vitest";
-import { fromBaseUnit, toBaseUnit } from "../src/index.js";
+import { fromBaseUnit, toBaseUnit } from "../src/index.ts";
 
 describe("canonical unit conversions (US3, FR-009)", () => {
   it("converts an alternate distance unit to the canonical base unit exactly", () => {
