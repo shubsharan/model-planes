@@ -19,11 +19,14 @@ export {
   type MmPerSec,
   type Tick,
   type MillidegPerTick,
+  type Quantity,
   asMm,
   asMillideg,
   asMmPerSec,
   asTick,
   asMillidegPerTick,
+  fromBaseUnit,
+  toBaseUnit,
 } from "./units.js";
 
 // --- User Story 1: state + command vocabulary --------------------------------
@@ -77,3 +80,6 @@ export {
 } from "./trace.js";
 
 export { SerializationError, deserialize, serialize } from "./serialize.js";
+
+// --- User Story 3: units (conversions above) + seeds --------------------------
+export { type Seed, deriveSubSeed, parseSeed } from "./seed.js";

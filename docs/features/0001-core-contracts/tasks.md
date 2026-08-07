@@ -106,15 +106,15 @@ description: "Task list for feature: Core Contracts"
 
 > **NOTE: Write these FIRST and observe them FAIL before implementing.**
 
-- [ ] T025 [P] [US3] Failing Vitest spec `packages/core/test/seed.test.ts`: `deriveSubSeed(label | index)` yields identical sub-seeds on repeated calls and across processes (SC-005; FR-010)
-- [ ] T026 [P] [US3] Failing Vitest spec `packages/core/test/units.test.ts`: exact conversion from an alternate boundary unit, and rejection of a quantity with a missing/ambiguous unit (SC-006; FR-009)
+- [X] T025 [P] [US3] Failing Vitest spec `packages/core/test/seed.test.ts`: `deriveSubSeed(label | index)` yields identical sub-seeds on repeated calls and across processes (SC-005; FR-010)
+- [X] T026 [P] [US3] Failing Vitest spec `packages/core/test/units.test.ts`: exact conversion from an alternate boundary unit, and rejection of a quantity with a missing/ambiguous unit (SC-006; FR-009)
 
 ### Implementation for User Story 3
 
-- [ ] T027 [P] [US3] Implement exact boundary-unit conversions and missing/ambiguous-unit rejection in `packages/core/src/units.ts` (FR-009)
-- [ ] T028 [P] [US3] Implement `Seed` (root) and the pure, deterministic `deriveSubSeed(label | index)` in `packages/core/src/seed.ts` (FR-010)
-- [ ] T029 [US3] Re-export US3 surface (units + seeds) from `packages/core/src/index.ts`
-- [ ] T030 [US3] Run T025 and T026; confirm both now pass
+- [X] T027 [P] [US3] Implement exact boundary-unit conversions and missing/ambiguous-unit rejection in `packages/core/src/units.ts` (FR-009)
+- [X] T028 [P] [US3] Implement `Seed` (root) and the pure, deterministic `deriveSubSeed(label | index)` in `packages/core/src/seed.ts` (FR-010)
+- [X] T029 [US3] Re-export US3 surface (units + seeds) from `packages/core/src/index.ts`
+- [X] T030 [US3] Run T025 and T026; confirm both now pass
 
 **Checkpoint**: All three stories independently functional.
 
