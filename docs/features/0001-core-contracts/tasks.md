@@ -22,9 +22,9 @@ description: "Task list for feature: Core Contracts"
 
 **Purpose**: Wire the test harness and package scripts before any contract code.
 
-- [ ] T001 Add Vitest as a workspace dev dependency and create the shared root config `vitest.config.ts` (transforms TS/ESM directly against `src`) per [plan.md](plan.md) Testing section
-- [ ] T002 [P] Set the `test` script to `vitest run` in `packages/core/package.json` and confirm `packages/core/tsconfig.json` extends the base config with `strict` and `noUncheckedIndexedAccess`
-- [ ] T003 [P] Confirm oxlint/oxfmt configuration covers `packages/core/src` and `packages/core/test`
+- [X] T001 Add Vitest as a workspace dev dependency and create the shared root config `vitest.config.ts` (transforms TS/ESM directly against `src`) per [plan.md](plan.md) Testing section
+- [X] T002 [P] Set the `test` script to `vitest run` in `packages/core/package.json` and confirm `packages/core/tsconfig.json` extends the base config with `strict` and `noUncheckedIndexedAccess`
+- [X] T003 [P] Confirm oxlint/oxfmt configuration covers `packages/core/src` and `packages/core/test`
 
 ---
 

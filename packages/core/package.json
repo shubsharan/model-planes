@@ -14,6 +14,6 @@
   "scripts": {
     "build": "tsc -b",
     "check-types": "tsc --noEmit",
-    "test": "echo \"@model-planes/core: no tests yet\""
+    "test": "vitest run"
   }
 }

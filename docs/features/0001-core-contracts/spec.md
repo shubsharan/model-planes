@@ -1,5 +1,5 @@
 ---
-status: Pending
+status: Active
 ---
 
 # Feature Specification: Core Contracts
