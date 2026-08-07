@@ -76,6 +76,6 @@ Do not edit inside the generated markers.
 
 <!-- speckit:generated:roadmap-epics START -->
 
-- [Deterministic Simulator](epics/0001-deterministic-simulator/epic.md) — Pending
+- [Deterministic Simulator](epics/0001-deterministic-simulator/epic.md) — Active
 
 <!-- speckit:generated:roadmap-epics END -->

@@ -1,5 +1,5 @@
 ---
-status: Pending
+status: Active
 ---
 
 # Epic: Deterministic Simulator
@@ -121,6 +121,6 @@ to a byte-identical result.
 
 <!-- speckit:generated:epic-features START -->
 
-- [Core Contracts](../../features/0001-core-contracts/spec.md) — Pending
+- [Core Contracts](../../features/0001-core-contracts/spec.md) — Active
 
 <!-- speckit:generated:epic-features END -->

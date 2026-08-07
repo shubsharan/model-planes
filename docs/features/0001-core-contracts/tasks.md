@@ -124,11 +124,11 @@ description: "Task list for feature: Core Contracts"
 
 **Purpose**: Cross-story determinism coverage and the governing verification gates from [plan.md](plan.md).
 
-- [ ] T031 [P] Add `packages/core/test/serialize-crossproc.test.ts`: serialize the same value in a separate Node process and assert byte-identical output (SC-002 across processes)
-- [ ] T032 Add consolidated `packages/core/test/validate.test.ts` covering malformed-input rejection across all entities (FR-011, SC-006)
-- [ ] T033 Verification gate — run `pnpm --filter @model-planes/core build && pnpm --filter @model-planes/core test` (provider-free); all Vitest specs pass
-- [ ] T034 Verification gate — run `pnpm speckit:check` (workflow + link validation) and confirm spec and plan reference the same ADR
-- [ ] T035 Execute [quickstart.md](quickstart.md) end-to-end as a smoke check
+- [X] T031 [P] Add `packages/core/test/serialize-crossproc.test.ts`: serialize the same value in a separate Node process and assert byte-identical output (SC-002 across processes)
+- [X] T032 Add consolidated `packages/core/test/validate.test.ts` covering malformed-input rejection across all entities (FR-011, SC-006)
+- [X] T033 Verification gate — run `pnpm --filter @model-planes/core build && pnpm --filter @model-planes/core test` (provider-free); all Vitest specs pass
+- [X] T034 Verification gate — run `pnpm speckit:check` (workflow + link validation) and confirm spec and plan reference the same ADR
+- [X] T035 Execute [quickstart.md](quickstart.md) end-to-end as a smoke check
 
 > **No documentation task**: [plan.md](plan.md) declares **Documentation Impact: None** (the durable decision lives in ADR 0001; `docs/architecture.md` is unchanged).
 
