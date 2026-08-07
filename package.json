@@ -19,6 +19,7 @@
     "verify": "pnpm lint && pnpm check-types && pnpm test && pnpm speckit:test && pnpm speckit:check"
   },
   "devDependencies": {
+    "@types/node": "^26.1.2",
     "oxfmt": "^0.61.0",
     "oxlint": "^1.76.0",
     "turbo": "^2.10.8",

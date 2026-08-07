@@ -62,3 +62,18 @@ export {
   hold,
   parseCommand,
 } from "./command.js";
+
+// --- User Story 2: trace/record schema + serialization -----------------------
+export {
+  INTERVENTION_REASONS,
+  type DecisionRecord,
+  type DecisionResult,
+  type Intervention,
+  type InterventionReason,
+  type Trace,
+  parseDecisionRecord,
+  parseIntervention,
+  parseTrace,
+} from "./trace.js";
+
+export { SerializationError, deserialize, serialize } from "./serialize.js";

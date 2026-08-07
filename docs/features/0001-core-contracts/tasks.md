@@ -80,17 +80,17 @@ description: "Task list for feature: Core Contracts"
 
 > **NOTE: Write these FIRST and observe them FAIL before implementing.**
 
-- [ ] T017 [P] [US2] Failing Vitest spec `packages/core/test/serialize.test.ts`: serialize→deserialize round-trip equality, byte-identical output across repeated serializations, and version-mismatch rejection on read (SC-002, SC-004; FR-007, FR-008)
-- [ ] T018 [P] [US2] Failing Vitest spec `packages/core/test/attribution.test.ts`: on a record where an intervention modified a proposal, `proposed`, `intervention`, and `applied` are all preserved and independently retrievable (SC-003; FR-006)
+- [X] T017 [P] [US2] Failing Vitest spec `packages/core/test/serialize.test.ts`: serialize→deserialize round-trip equality, byte-identical output across repeated serializations, and version-mismatch rejection on read (SC-002, SC-004; FR-007, FR-008)
+- [X] T018 [P] [US2] Failing Vitest spec `packages/core/test/attribution.test.ts`: on a record where an intervention modified a proposal, `proposed`, `intervention`, and `applied` are all preserved and independently retrievable (SC-003; FR-006)
 
 ### Implementation for User Story 2
 
-- [ ] T019 [P] [US2] Implement `Intervention` (enumerated reason + optional detail) in `packages/core/src/trace.ts` (FR-005, FR-006)
-- [ ] T020 [US2] Implement `DecisionRecord` (observed, messages, proposed, intervention, applied, result, margins, meta) keeping proposal/intervention/applied distinct in `packages/core/src/trace.ts` (FR-005, FR-006)
-- [ ] T021 [US2] Implement `Trace` (schemaVersion, seed, records ordered by simTime/index) and the `SCHEMA_VERSION` wiring in `packages/core/src/trace.ts` (FR-005, FR-007)
-- [ ] T022 [US2] Implement canonical deterministic serialize/deserialize (integers only, fixed field order / sorted keys, explicit `schemaVersion`, reject-on-version-mismatch when reading) in `packages/core/src/serialize.ts` (FR-007, FR-008)
-- [ ] T023 [US2] Re-export US2 types and serialization surface from `packages/core/src/index.ts`
-- [ ] T024 [US2] Run T017 and T018; confirm both now pass
+- [X] T019 [P] [US2] Implement `Intervention` (enumerated reason + optional detail) in `packages/core/src/trace.ts` (FR-005, FR-006)
+- [X] T020 [US2] Implement `DecisionRecord` (observed, messages, proposed, intervention, applied, result, margins, meta) keeping proposal/intervention/applied distinct in `packages/core/src/trace.ts` (FR-005, FR-006)
+- [X] T021 [US2] Implement `Trace` (schemaVersion, seed, records ordered by simTime/index) and the `SCHEMA_VERSION` wiring in `packages/core/src/trace.ts` (FR-005, FR-007)
+- [X] T022 [US2] Implement canonical deterministic serialize/deserialize (integers only, fixed field order / sorted keys, explicit `schemaVersion`, reject-on-version-mismatch when reading) in `packages/core/src/serialize.ts` (FR-007, FR-008)
+- [X] T023 [US2] Re-export US2 types and serialization surface from `packages/core/src/index.ts`
+- [X] T024 [US2] Run T017 and T018; confirm both now pass
 
 **Checkpoint**: Records round-trip deterministically and keep attribution separable — US1 + US2 both work independently.
 
