@@ -1,6 +1,6 @@
 // Canonical deterministic serialization (FR-008, ADR 0001): identical
 // logical values produce byte-identical output — recursively sorted object
-// keys, integers-only numbers (any non-integer number is rejected at
+// keys, safe-integer-only numbers (any other number is rejected at
 // serialize time), no insignificant whitespace — and a serialize-then-
 // deserialize round trip reproduces an identical value. `deserialize`
 // additionally rejects a value whose top-level `schemaVersion` differs from
@@ -35,7 +35,7 @@ function canonicalize(value: unknown, path: string): string {
     // identity under `Object.is` (ADR 0001 representation hazards).
     if (!isInteger(value)) {
       throw new SerializationError(
-        schemaError(path, "not-integer", `${path} must be an integer to serialize (ADR 0001)`),
+        schemaError(path, "not-integer", `${path} must be a safe integer to serialize (ADR 0001)`),
       );
     }
     return String(value);

@@ -30,6 +30,7 @@ import {
   parseWorldSnapshot,
 } from "@model-planes/core";
 import { RULESET_VERSION } from "../src/ruleset.ts";
+import { advanceTick } from "../src/world-engine.ts";
 import { type MotionCommand, aircraft, deepFreeze, runway, snapshot } from "./fixtures.ts";
 import { advance, expectedDelta, type TickOutcome, stateOf } from "./harness.ts";
 import type { WorldEngineState } from "../src/world-engine-state.ts";
@@ -292,6 +293,24 @@ describe("advanceTick keeps every produced snapshot contract-valid", () => {
       previous = outcome.snapshot.simTime;
     }
     expect(previous).toBe(initial.snapshot.simTime + RUN_TICKS);
+  });
+
+  it("returns an explicit error instead of stalling at the safe-integer tick ceiling", () => {
+    const initial = stateOf(
+      snapshot({ simTime: Number.MAX_SAFE_INTEGER - 1, aircraft: [], runways: [] }),
+    );
+
+    const finalTick = advanceTick(initial, []);
+    expect(finalTick.ok).toBe(true);
+    if (!finalTick.ok) throw new Error(`unexpected error: ${finalTick.error.message}`);
+    expect(finalTick.value.state.snapshot.simTime).toBe(Number.MAX_SAFE_INTEGER);
+
+    const exhausted = advanceTick(finalTick.value.state, []);
+    expect(exhausted.ok).toBe(false);
+    expect(exhausted.ok === false && exhausted.error).toMatchObject({
+      field: "WorldSnapshot.simTime",
+      reason: "out-of-range",
+    });
   });
 
   it("stamps every outcome with the ruleset in force", () => {

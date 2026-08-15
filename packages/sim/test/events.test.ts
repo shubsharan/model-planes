@@ -176,6 +176,36 @@ describe("advanceTick clamps, flags, and freezes an aircraft leaving the airspac
     });
   });
 
+  it("keeps exact boundary contact in bounds until a later step would cross", () => {
+    const touching = aircraft({
+      heading: 0,
+      speed: 100_000,
+      position: { x: AIRSPACE_BOUND_MM - STEP_MM, y: 0, z: 1_000_000 },
+    });
+    const outcomes = run(stateOver([touching]), 2);
+    const contact = outcomes[0];
+    if (contact === undefined) throw new Error("test invariant: run too short");
+
+    expect(planeIn(contact, "AC-1").position.x).toBe(AIRSPACE_BOUND_MM);
+    expect(tickIndicesWithEvent(outcomes, "airspaceExited", "AC-1")).toEqual([1]);
+    expect(outcomes.map((outcome) => outcome.state.exited.has("AC-1"))).toEqual([false, true]);
+  });
+
+  it("allows an aircraft on the boundary to move inward without an exit", () => {
+    const inward = aircraft({
+      heading: 180_000,
+      speed: 100_000,
+      position: { x: AIRSPACE_BOUND_MM, y: 0, z: 1_000_000 },
+    });
+    const outcomes = run(stateOver([inward]), 1);
+    const moved = outcomes[0];
+    if (moved === undefined) throw new Error("test invariant: run too short");
+
+    expect(planeIn(moved, "AC-1").position.x).toBe(AIRSPACE_BOUND_MM - STEP_MM);
+    expect(tickIndicesWithEvent(outcomes, "airspaceExited", "AC-1")).toEqual([]);
+    expect(moved.state.exited.has("AC-1")).toBe(false);
+  });
+
   it("flags the aircraft as exited from the crossing tick onward", () => {
     const outcomes = run(stateOver([nearPositiveX]), RUN_TICKS);
 

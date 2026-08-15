@@ -55,6 +55,19 @@ describe("consolidated malformed-input rejection (FR-011, SC-006)", () => {
     expect(result.ok).toBe(false);
   });
 
+  it("rejects an unsafe integer before it can lose arithmetic precision", () => {
+    const result = parseWorldSnapshot({
+      schemaVersion: SCHEMA_VERSION,
+      simTime: Number.MAX_SAFE_INTEGER + 1,
+      aircraft: [],
+      runways: [],
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.ok === false && result.error.field).toBe("WorldSnapshot.simTime");
+    expect(result.ok === false && result.error.reason).toBe("not-integer");
+  });
+
   it("rejects an Intervention with an unrecognized reason", () => {
     const result = parseIntervention("intervention", { reason: "vibes" });
     expect(result.ok).toBe(false);

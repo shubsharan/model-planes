@@ -49,7 +49,8 @@ FEAT-0001 contracts. Each decision is a versioned rule of the world engine; chan
 - **Decision**: `perTickMm(ratePerSecond, tick)` in `ruleset.ts` computes the whole-mm
   authority available *through* tick `tick` as `⌊tick · ratePerSecond · MS_PER_TICK /
   1000⌋ − ⌊(tick − 1) · ratePerSecond · MS_PER_TICK / 1000⌋` — an exact integer budget
-  schedule keyed on the snapshot's absolute `simTime`, not a residual carried between
+  schedule evaluated with `bigint` products and division, keyed on the snapshot's
+  absolute `simTime`, not a residual carried between
   ticks. A rate that is a multiple of 10 mm/s gets the same constant per-tick bound on
   every tick; a slower rate (down to 1 mm/s) gets 1 mm on the ticks where the cumulative
   budget crosses a whole mm and 0 on the rest, with the mean rate over any window exactly
@@ -62,7 +63,8 @@ FEAT-0001 contracts. Each decision is a versioned rule of the world engine; chan
   `maxDescentRate` is only required to be a non-negative integer). The tick-keyed budget
   is the exact fix: it never produces a 0 bound for a positive rate over any 10-tick
   window, and it needs no new state — `tick` is already the value being computed, so
-  replay stays sufficient without a schema change. The arithmetic is integer-only, so
+  replay stays sufficient without a schema change. `bigint` keeps the cumulative
+  products exact near the safe-integer tick ceiling. The arithmetic is integer-only, so
   ADR 0001's boundary-rounding rule (which governs values leaving a *floating-point*
   computation) does not apply to this function.
 - **Declared limitation carried forward, not fixed the same way**: the horizontal

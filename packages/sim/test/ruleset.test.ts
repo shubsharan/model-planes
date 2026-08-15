@@ -52,6 +52,12 @@ describe("perTickMm never stalls a positive rate", () => {
     for (let tick = 1; tick <= 1_000; tick++) total += perTickMm(1, tick);
     expect(total).toBe(100);
   });
+
+  it("keeps the budget schedule exact near the safe-integer tick ceiling", () => {
+    expect(perTickMm(1, Number.MAX_SAFE_INTEGER - 2)).toBe(0);
+    expect(perTickMm(1, Number.MAX_SAFE_INTEGER - 1)).toBe(1);
+    expect(perTickMm(20_000, Number.MAX_SAFE_INTEGER)).toBe(2_000);
+  });
 });
 
 // --- nextFuel (research R8) ---------------------------------------------------

@@ -111,9 +111,9 @@ export function createWorldEngineState(snapshot: unknown): Result<WorldEngineSta
  * Every submitted and newly-effective command appears in exactly one of
  * `applied` / `rejected` / `superseded` — nothing is silent.
  *
- * Total function on valid WorldEngineState — errs only on structural impossibility
- * (a WorldEngineState not produced by this API); command illegality is expressed as
- * `rejected`, not as an error.
+ * Errs only on structural impossibility (a WorldEngineState not produced by this API)
+ * or when `snapshot.simTime` is already `Number.MAX_SAFE_INTEGER` and has no exact
+ * successor; command illegality is expressed as `rejected`, not as an error.
  */
 export function advanceTick(
   state: WorldEngineState,
@@ -140,5 +140,8 @@ export function advanceTick(
    reviewable API change; until then a caller holding a full `Command` must narrow it
    and decide for itself what to do with the rest.
 7. **Boundary safety**: no reported position outside airspace bounds, no negative
-   altitude; crossings clamp + flag (`airspaceExited`), exhaustion flags
+   altitude; motion that would cross an inclusive boundary clamps + flags
+   (`airspaceExited`), while exact contact remains in bounds; exhaustion flags
    (`fuelExhausted`); both exactly once, at the transition tick.
+8. **Time ceiling**: advancing a state at `Number.MAX_SAFE_INTEGER` returns a structured
+   `out-of-range` error rather than returning the same tick, wrapping, or losing precision.

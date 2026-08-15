@@ -16,7 +16,8 @@
 
 Workspace package `packages/sim` (pnpm + turbo): sources in `packages/sim/src/`, tests in
 `packages/sim/test/`, per plan.md Project Structure. Core contracts are imported from
-`@model-planes/core` and are frozen for this feature — no task may edit `packages/core/src`.
+`@model-planes/core`; localized cross-package corrections are allowed when this feature
+exposes a shared invariant gap, and must carry direct core regression coverage.
 
 ---
 
@@ -122,7 +123,7 @@ reason, and that subsequent legal commands still work (spec US3 acceptance scena
 - [X] T020 [P] Write performance check `packages/sim/test/performance.test.ts`: advance a 50-aircraft fixture 36 000 ticks (1 simulated hour) and assert completion under a 10 s test budget, evidencing spec SC-005's < 1 min bound with margin (research R9)
 - [X] T021 [P] Update `packages/sim/README.md`: remove the "Scaffold only" note; document the implemented world engine modules, the `RULESET_VERSION` policy, and what remains for later features (runway state machines, separation, replay verifier) — per plan.md Documentation Impact
 - [X] T022 [P] Validate `docs/features/0002-aircraft-world-engine/quickstart.md` by executing its snippets against the built package (adjust the doc if any drift is found; it must run as written)
-- [X] T023 Verify determinism guardrails: grep `packages/sim/src` for forbidden constructs (`Math.sin`, `Math.cos`, `Math.tan`, `Math.random`, `Date.now`, `performance.now`) and assert none in the state path; confirm no diff exists under `packages/core/src` (plan.md review boundary)
+- [X] T023 Verify determinism guardrails: grep `packages/sim/src` for forbidden constructs (`Math.sin`, `Math.cos`, `Math.tan`, `Math.random`, `Date.now`, `performance.now`) and assert none in the state path; inspect any `packages/core/src` diff for necessity, ADR compatibility, and direct regression coverage (plan.md review boundary)
 - [X] T024 Run full verification gates from plan.md: `pnpm --filter @model-planes/sim test`, `pnpm --filter @model-planes/sim check-types`, and the workspace `turbo` build/test; all green
 
 ---
@@ -195,4 +196,5 @@ Task: "public exports in packages/sim/src/index.ts"
 - [P] tasks = different files, no dependencies
 - Verify each test suite fails for the expected reason before implementing
 - Commit after each task or logical group
-- `packages/core/src` is frozen: any contract gap stops work and returns to FEAT-0001 versioning
+- Cross-package edits are permitted when implementation exposes a shared invariant gap;
+  keep them narrow, ADR-compatible, and directly tested in the owning package

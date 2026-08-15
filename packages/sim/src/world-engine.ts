@@ -12,6 +12,7 @@ import {
   AIRSPACE_BOUND_MM,
   type AircraftState,
   type Result,
+  type SchemaError,
   type Tick,
   type WorldSnapshot,
   asMillideg,
@@ -286,16 +287,25 @@ function advanceAircraft(
  * Advance exactly one tick.
  *
  * `commands` are this tick's newly submitted proposals, in submission order.
- * Command illegality is expressed as `rejected`, never as an error: this returns
- * `err` only on structural impossibility — a `WorldEngineState` that this API
- * could not have produced.
+ * Command illegality is expressed as `rejected`, never as an error. This returns
+ * `err` on structural impossibility or when `simTime` has reached the largest
+ * exactly representable tick and therefore has no valid successor.
  */
 export function advanceTick(
   state: WorldEngineState,
   commands: readonly MotionCommand[],
 ): Result<TickOutcome> {
   const previous = state.snapshot;
-  const tick = asTick(previous.simTime + 1);
+  const nextTick = previous.simTime + 1;
+  if (!Number.isSafeInteger(nextTick)) {
+    const error: SchemaError = {
+      field: "WorldSnapshot.simTime",
+      reason: "out-of-range",
+      message: `WorldSnapshot.simTime cannot advance beyond ${Number.MAX_SAFE_INTEGER}`,
+    };
+    return err(error);
+  }
+  const tick = asTick(nextTick);
 
   const scratch: TickScratch = {
     tick,

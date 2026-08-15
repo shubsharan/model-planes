@@ -69,16 +69,16 @@ export function err<T, E extends SchemaError = SchemaError>(error: E): Result<T,
 // --- Reusable validation-boundary guards -----------------------------------
 
 /**
- * True only for a finite, integer number (ADR 0001: no floats in state/
- * commands/trace). `-0` is excluded: it is one of the representation hazards
- * ADR 0001 names, it is indistinguishable from `0` under `===` but not under
- * `Object.is`, and it does not survive canonical serialization (`String(-0)`
+ * True only for a safe integer number (ADR 0001: no floats or ambiguous large
+ * integers in state/commands/trace). `-0` is excluded: it is one of the
+ * representation hazards ADR 0001 names: it is indistinguishable from `0`
+ * under `===` but not under `Object.is`, and it does not survive canonical serialization (`String(-0)`
  * is `"0"`), so admitting it would break the round-trip identity guarantee.
  * This is the single definition of a canonical number — `serialize.ts` and
  * every parser funnel through it, so the exclusion holds everywhere.
  */
 export function isInteger(value: unknown): value is number {
-  return typeof value === "number" && Number.isInteger(value) && !Object.is(value, -0);
+  return typeof value === "number" && Number.isSafeInteger(value) && !Object.is(value, -0);
 }
 
 /** `String(-0)` is `"0"`, which would make a `-0` rejection unreadable. */
@@ -89,7 +89,7 @@ function describe(value: unknown): string {
 export function requireInteger(field: string, value: unknown): Result<number> {
   if (!isInteger(value)) {
     return err(
-      schemaError(field, "not-integer", `${field} must be an integer, got ${describe(value)}`),
+      schemaError(field, "not-integer", `${field} must be a safe integer, got ${describe(value)}`),
     );
   }
   return ok(value);

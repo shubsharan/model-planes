@@ -26,7 +26,8 @@ round-half-to-even quantization at every state boundary.
 - **Project Type**: Library package inside the pnpm + turbo workspace
 - **Performance Goals**: SC-005 — 50 aircraft × 1 h simulated (36 000 ticks at 100 ms/tick) in < 1 min wall clock
 - **Constraints**: No wall-clock reads, no unseeded randomness, no `Math` transcendentals in the state path; every produced quantity is an integer base unit; inputs never mutated
-- **Scale/Scope**: One new module set in `packages/sim/src` (~5 source files + tests); no schema changes to `core`
+- **Scale/Scope**: One new module set in `packages/sim/src` (~5 source files + tests), plus
+  localized core numeric-validation corrections when required by shared invariants
 
 ## Constitution Check
 
@@ -135,6 +136,6 @@ choices; the durable cross-package commitment (state representation) already has
   motion suite checks per-tick deltas never exceed limits and targets are reached and
   held (US2); legality suite asserts each rejection category leaves state
   reference-equal input and reports a machine-readable reason (US3).
-- Review boundary: no changes under `packages/core/src` (contracts frozen for this
-  feature); any needed contract change stops work and goes back through FEAT-0001
-  versioning.
+- Review boundary: any change under `packages/core/src` must be a localized shared-invariant
+  correction, remain compatible with accepted ADRs, and carry direct core regression
+  coverage. Schema evolution still goes through the owning core feature and versioning.

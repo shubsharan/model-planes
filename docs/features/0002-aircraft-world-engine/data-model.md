@@ -106,7 +106,8 @@ Per-aircraft, per-tick occurrences. Versioned discriminated union:
 The complete result of `advanceTick(state, commands)`:
 
 - `rulesetVersion`: integer — `RULESET_VERSION` in force.
-- `state`: next `WorldEngineState` (with `snapshot.simTime` advanced by exactly 1).
+- `state`: next `WorldEngineState` (with `snapshot.simTime` advanced by exactly 1); no
+  outcome is produced when the current tick has no safe-integer successor.
 - `applied`: `MotionCommand[]` — commands that took effect this tick, in application
   order. Every entry changed a target; there is no accepted-but-inert case (research R7).
 - `rejected`: `CommandRejection[]` — in submission order.
@@ -143,7 +144,8 @@ data-model's "State transitions" note.
 
 ## Validation rules
 
-- Every produced `snapshot` passes `parseWorldSnapshot` (integers, ranges, unique ids).
+- Every produced `snapshot` passes `parseWorldSnapshot` (safe integers, ranges, unique ids).
+- `advanceTick` returns an explicit `out-of-range` error at the safe-integer tick ceiling.
 - Per-tick deltas never exceed `maxTurnRate` / climb/descent per-tick equivalents;
   speed always within `[minSpeed, maxSpeed]`.
 - Admission enforces target legality against the *targeted aircraft's* limits and the

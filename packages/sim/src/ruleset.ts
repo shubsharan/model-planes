@@ -63,20 +63,22 @@ export function tickDistanceScaled(speedMmPerSec: number): number {
  * absolute tick, so it stays a pure function of the snapshot's `simTime` (no
  * per-aircraft phase state to carry between ticks — replay stays sufficient).
  * A 1 mm/s aircraft receives 1 mm of authority on every 10th tick and 0 on the
- * rest; its mean rate over any window is exactly the declared rate. Integer
- * arithmetic throughout — no float ever crosses this boundary, so ADR 0001's
- * boundary-rounding rule does not apply here.
+ * rest; its mean rate over any window is exactly the declared rate. BigInt
+ * arithmetic keeps the cumulative products exact even near the safe-integer
+ * tick ceiling; the single-tick difference is converted back to a number.
+ * No float crosses this boundary, so ADR 0001's boundary-rounding rule does
+ * not apply here.
  *
  * Unchanged for any rate that is a multiple of 10 mm/s — every existing fixture
  * rate is — where the schedule produces the same constant bound every tick that
  * the old rounding rule did.
  */
 export function perTickMm(ratePerSecond: number, tick: number): number {
-  const perTickScaled = ratePerSecond * MS_PER_TICK;
-  return (
-    Math.floor((tick * perTickScaled) / MS_PER_SECOND) -
-    Math.floor(((tick - 1) * perTickScaled) / MS_PER_SECOND)
-  );
+  const scaledRate = BigInt(ratePerSecond) * BigInt(MS_PER_TICK);
+  const denominator = BigInt(MS_PER_SECOND);
+  const currentBudget = (BigInt(tick) * scaledRate) / denominator;
+  const previousBudget = ((BigInt(tick) - 1n) * scaledRate) / denominator;
+  return Number(currentBudget - previousBudget);
 }
 
 // --- Boundary quantization (ADR 0001, research R2) ---------------------------

@@ -116,9 +116,9 @@ and subsequent legal commands still work.
   caller (supersession is explicit, not silent loss).
 - Commands of different kinds for the same aircraft at the same tick (e.g. heading and
   speed) all apply together.
-- An aircraft that reaches the boundary of the terminal airspace is flagged as having
-  exited in that tick's outcome; it is never reported at a position outside the
-  declared bounds.
+- An aircraft whose motion would cross the terminal-airspace boundary is clamped and
+  flagged as exited in that tick's outcome. Exact contact with the inclusive boundary
+  remains in bounds; an aircraft is never reported outside the declared bounds.
 - An aircraft whose fuel-or-time window reaches zero is flagged as exhausted in that
   tick's outcome and continues under the declared exhaustion rule; exhaustion is never
   silent.
@@ -130,8 +130,10 @@ and subsequent legal commands still work.
 
 ### Functional Requirements
 
-- **FR-001**: The world engine MUST advance a valid world state by exactly one tick at a time,
-  producing a new valid world state; the input state is never mutated.
+- **FR-001**: The world engine MUST advance a valid, advanceable world state by exactly one
+  tick at a time, producing a new valid world state; the input state is never mutated. A
+  state at the maximum safe-integer tick is valid but not advanceable and MUST return an
+  explicit out-of-range error rather than stall, wrap, or lose precision.
 - **FR-002**: Advancement MUST be a pure function of (current state, commands effective
   at that tick, declared ruleset): no wall-clock time, no unseeded randomness, no
   hidden state may influence the result. Identical inputs always produce exactly
@@ -166,8 +168,9 @@ and subsequent legal commands still work.
   per-tick amount, and reaching zero MUST raise an explicit exhaustion event governed
   by a declared rule.
 - **FR-010**: An aircraft MUST never be reported outside the declared airspace bounds
-  or below ground level; reaching a bound raises an explicit event under a declared
-  rule rather than producing an out-of-range state.
+  or below ground level; horizontal motion that would cross a bound raises an explicit
+  event and clamps under a declared rule. Exact contact with an inclusive bound does not
+  itself count as an exit.
 
 ### Key Entities
 

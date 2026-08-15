@@ -28,6 +28,10 @@ describe("canonical deterministic serialization (US2, FR-007, FR-008)", () => {
     expect(() => serialize({ heading: 90.5 })).toThrow();
   });
 
+  it("rejects an unsafe integer that cannot round-trip arithmetically", () => {
+    expect(() => serialize({ simTime: Number.MAX_SAFE_INTEGER + 1 })).toThrow();
+  });
+
   it("rejects reading data written under a different schema version (SC-004, FR-007)", () => {
     const trace = buildSampleTrace();
     const bytes = serialize({ ...trace, schemaVersion: SCHEMA_VERSION + 1 });

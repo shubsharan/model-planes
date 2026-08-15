@@ -2,8 +2,8 @@
 //
 // `@model-planes/core` exports the `Result` *type* and `SchemaValidationError`,
 // but its `ok`/`err` constructors are internal to the package's `exports` map.
-// Rather than widen the core surface — `packages/core/src` is frozen for this
-// feature — `sim` builds the identical structure here. These are structurally
+// Rather than widen the public core surface solely for simulator constructors,
+// `sim` builds the identical structure here. These are structurally
 // the same values core produces: an `ok`/`error` discriminant plus an `unwrap`
 // that throws the core error class, so a `Result` from `sim` and one from `core`
 // are interchangeable at every call site and compare equal field by field.
